@@ -1,0 +1,10 @@
+[package]
+name = "xmip-authenticate"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+repository = "https://github.com/IlleNilsson/xmip-authenticate"
+description = "Authentication contracts for identified Xmip Actors."
+
+[dependencies]
+xmip-party = { git = "https://github.com/IlleNilsson/xmip-party", rev = "c2a7a42b7fe23d29773baa33e5a377da17a2268c" }
