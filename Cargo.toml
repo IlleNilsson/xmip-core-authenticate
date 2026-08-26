@@ -2,12 +2,12 @@
 [workspace]
 
 [package]
-name = "xmip-authenticate"
+name = "xmip-core-authenticate"
 version = "0.1.0"
 edition = "2024"
 license = "AGPL-3.0-or-later"
-repository = "https://github.com/IlleNilsson/xmip-authenticate"
+repository = "https://github.com/IlleNilsson/xmip-core-authenticate"
 description = "Authentication contracts for identified Xmip Actors."
 
 [dependencies]
-xmip-party = { git = "https://github.com/IlleNilsson/xmip-party", rev = "c2a7a42b7fe23d29773baa33e5a377da17a2268c" }
+xmip-party = { package = "xmip-core-party", git = "https://github.com/IlleNilsson/xmip-core-party", branch = "main" }
