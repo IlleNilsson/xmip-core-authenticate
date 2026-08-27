@@ -9,51 +9,29 @@
 //! who is claimed    is the claim true    may this true identity do this
 //! ```
 //!
-//! This module is the middle box. It is handed what arrived and what the
-//! Receive Location declared it would take, and it answers with an
-//! [`AuthenticatedIdentity`] or a [`Refusal`].
+//! This module is the middle box. It is handed a claim that
+//! `xmip-core-identify` read out of the arrival, plus what the Receive Location
+//! declared it would take, and it answers with an [`AuthenticatedIdentity`] or
+//! a [`Refusal`].
+//!
+//! The claim comes from the first gate rather than being read here.
+//! Identification and authentication are separate because the estate needs them
+//! separate: X12 identifies and never authenticates, and a record that cannot
+//! tell a claim from a proof cannot settle a dispute.
 //!
 //! **The Party is the output, never the input.** An earlier signature here took
 //! a `&Party` and a credential, which required knowing who the caller was
 //! before checking who the caller was. Authentication verifies the presented
 //! credential and *resolves it to* a Party, per ADR-0019 clause 4.
 
+/// Re-exported so a caller of the second gate does not have to name the first
+/// crate to hold what it produced.
+pub use xmip_identify::Presented;
+
 use std::error::Error;
 use std::fmt;
 use xmip_context::{AuthenticatedIdentity, Verified};
-use xmip_core::PartyId;
-use xmip_party::{Mechanism, Party, Purpose};
-
-/// What arrived, before anything has been checked.
-///
-/// The secret does not appear here. Whatever proves the claim — a signature, a
-/// ticket, a password hash comparison — is the [`Authenticator`]'s business and
-/// belongs to the protocol it implements.
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Presented {
-    pub mechanism: Mechanism,
-    /// The claimed value — `CN=partner-x.example`, `sub=partner-x`.
-    pub value: String,
-    /// What the transport observed. Goes onto the record either way.
-    pub evidence: Vec<(String, String)>,
-}
-
-impl Presented {
-    #[must_use]
-    pub fn new(mechanism: Mechanism, value: impl Into<String>) -> Self {
-        Self {
-            mechanism,
-            value: value.into(),
-            evidence: Vec::new(),
-        }
-    }
-
-    #[must_use]
-    pub fn with_evidence(mut self, name: impl Into<String>, value: impl Into<String>) -> Self {
-        self.evidence.push((name.into(), value.into()));
-        self
-    }
-}
+use xmip_core::{Mechanism, PartyId, Purpose};
 
 /// What a Receive Location declares it will take. ADR-0019 clause 1.
 ///
@@ -184,17 +162,16 @@ pub trait Authenticator: Send + Sync {
 /// A registry lookup, not a decision. Resolving to nothing is ordinary and
 /// decides nothing by itself: a Party is a shortcut to an identity, not a
 /// permission.
+///
+/// Answers with a [`PartyId`] and not a `Party`, which is why this gate has no
+/// dependency on `xmip-core-party` — `architecture.toml` gives it `xmip-core`
+/// and `xmip-core-context` and nothing else. The restriction is the design
+/// rather than an accident of packaging: proving a credential and knowing whose
+/// it is are different questions, and a gate that could read a Party's
+/// associations would eventually decide something with them.
 pub trait PartyRegistry: Send + Sync {
-    /// Find the Party a presented value belongs to.
-    fn resolve(&self, mechanism: &str, purpose: Purpose, value: &str) -> Option<Party>;
-
-    /// Find a Party already named.
-    ///
-    /// The send side needs this: ADR-0006 resolves *which* Party's identity to
-    /// present through the Send Location chain, and then the registry has to
-    /// produce it. Looking up by value would be answering a question nobody
-    /// asked.
-    fn party(&self, party_id: PartyId) -> Option<Party>;
+    /// Which Party a verified value belongs to, if any.
+    fn resolve(&self, mechanism: &str, purpose: Purpose, value: &str) -> Option<PartyId>;
 }
 
 /// Run the authentication gate.
@@ -245,8 +222,12 @@ pub fn authenticate(
         });
     }
 
-    let mut identity =
-        AuthenticatedIdentity::new(presented.mechanism.clone(), &presented.value, verified);
+    let mut identity = AuthenticatedIdentity::new(
+        presented.mechanism.clone(),
+        &presented.value,
+        presented.established,
+        verified,
+    );
 
     for (name, value) in &presented.evidence {
         identity = identity.with_evidence(name, value);
@@ -254,18 +235,16 @@ pub fn authenticate(
 
     // The lookup happens after verification, never before. Resolving first
     // would leak which values are known to an unauthenticated caller.
-    if let Some(party) = registry.resolve(
+    if let Some(party_id) = registry.resolve(
         presented.mechanism.name(),
         Purpose::Receive,
         &presented.value,
     ) {
-        if !acceptance.permits(party.party_id) {
-            return Err(Refusal::PartyNotPermitted {
-                party_id: party.party_id,
-            });
+        if !acceptance.permits(party_id) {
+            return Err(Refusal::PartyNotPermitted { party_id });
         }
 
-        identity = identity.resolving_to(party.party_id);
+        identity = identity.resolving_to(party_id);
     }
 
     Ok(identity)
@@ -274,7 +253,7 @@ pub fn authenticate(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use xmip_party::{mechanism, Identity, PartyKind};
+    use xmip_core::mechanism;
 
     struct Always(Mechanism, Verified);
 
@@ -288,31 +267,24 @@ mod tests {
         }
     }
 
-    struct Registry(Vec<Party>);
+    struct Registry(Vec<(PartyId, &'static str, Purpose, &'static str)>);
 
     impl PartyRegistry for Registry {
-        fn resolve(&self, mechanism: &str, purpose: Purpose, value: &str) -> Option<Party> {
+        fn resolve(&self, mechanism: &str, purpose: Purpose, value: &str) -> Option<PartyId> {
             self.0
                 .iter()
-                .find(|party| party.identity(mechanism, purpose) == Some(value))
-                .cloned()
-        }
-
-        fn party(&self, party_id: PartyId) -> Option<Party> {
-            self.0.iter().find(|party| party.party_id == party_id).cloned()
+                .find(|(_, m, p, v)| *m == mechanism && *p == purpose && *v == value)
+                .map(|(party_id, _, _, _)| *party_id)
         }
     }
 
     fn registry() -> Registry {
-        Registry(vec![Party::new(
+        Registry(vec![(
             PartyId::new(1),
-            PartyKind::Organization,
-            "partner-x",
-        )
-        .with(Identity::receiving(
-            mechanism::mutual_tls(),
+            "mutual-tls",
+            Purpose::Receive,
             "CN=partner-x.example",
-        ))])
+        )])
     }
 
     fn tls_proves() -> Always {
@@ -325,7 +297,7 @@ mod tests {
             &Acceptance::closed().accepting(&mechanism::mutual_tls()),
             &[&tls_proves()],
             &registry(),
-            &Presented::new(mechanism::mutual_tls(), "CN=partner-x.example"),
+            &Presented::passed(mechanism::mutual_tls(), "CN=partner-x.example"),
         )
         .expect("accepted");
 
@@ -342,7 +314,7 @@ mod tests {
             &Acceptance::closed().accepting(&mechanism::mutual_tls()),
             &[&tls_proves(), &Always(mechanism::api_key(), Verified::Proven)],
             &registry(),
-            &Presented::new(mechanism::api_key(), "k-123"),
+            &Presented::passed(mechanism::api_key(), "k-123"),
         )
         .expect_err("refused");
 
@@ -360,7 +332,7 @@ mod tests {
             &Acceptance::closed(),
             &[&tls_proves()],
             &registry(),
-            &Presented::new(mechanism::mutual_tls(), "CN=partner-x.example"),
+            &Presented::passed(mechanism::mutual_tls(), "CN=partner-x.example"),
         )
         .expect_err("refused");
 
@@ -376,7 +348,7 @@ mod tests {
             &Acceptance::closed().accepting(&mechanism::mutual_tls()),
             &[&tls_proves()],
             &registry(),
-            &Presented::new(mechanism::mutual_tls(), "CN=stranger.example"),
+            &Presented::passed(mechanism::mutual_tls(), "CN=stranger.example"),
         )
         .expect("accepted");
 
@@ -392,7 +364,7 @@ mod tests {
                 .from_party(PartyId::new(99)),
             &[&tls_proves()],
             &registry(),
-            &Presented::new(mechanism::mutual_tls(), "CN=partner-x.example"),
+            &Presented::passed(mechanism::mutual_tls(), "CN=partner-x.example"),
         )
         .expect_err("refused");
 
@@ -410,7 +382,7 @@ mod tests {
             &Acceptance::closed().accepting(&mechanism::kerberos()),
             &[&tls_proves()],
             &registry(),
-            &Presented::new(mechanism::kerberos(), "svc@CORP.EXAMPLE"),
+            &Presented::passed(mechanism::kerberos(), "svc@CORP.EXAMPLE"),
         )
         .expect_err("refused");
 
@@ -430,7 +402,7 @@ mod tests {
             &Acceptance::closed().accepting(&mechanism::anonymous()),
             &[&Always(mechanism::anonymous(), Verified::Proven)],
             &registry(),
-            &Presented::new(mechanism::anonymous(), ""),
+            &Presented::inferred(mechanism::anonymous(), ""),
         )
         .expect("accepted");
 
@@ -448,7 +420,7 @@ mod tests {
                 Verified::Claimed,
             )],
             &registry(),
-            &Presented::new(mechanism::edi_x12_interchange(), "ISA06=PARTNERX"),
+            &Presented::detected(mechanism::edi_x12_interchange(), "ISA06=PARTNERX"),
         )
         .expect("accepted");
 
@@ -461,7 +433,7 @@ mod tests {
             &Acceptance::closed().accepting(&mechanism::mutual_tls()),
             &[&tls_proves()],
             &registry(),
-            &Presented::new(mechanism::mutual_tls(), "CN=partner-x.example")
+            &Presented::passed(mechanism::mutual_tls(), "CN=partner-x.example")
                 .with_evidence("issuer", "CN=Example CA")
                 .with_evidence("source", "203.0.113.7"),
         )
