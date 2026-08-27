@@ -185,7 +185,16 @@ pub trait Authenticator: Send + Sync {
 /// decides nothing by itself: a Party is a shortcut to an identity, not a
 /// permission.
 pub trait PartyRegistry: Send + Sync {
+    /// Find the Party a presented value belongs to.
     fn resolve(&self, mechanism: &str, purpose: Purpose, value: &str) -> Option<Party>;
+
+    /// Find a Party already named.
+    ///
+    /// The send side needs this: ADR-0006 resolves *which* Party's identity to
+    /// present through the Send Location chain, and then the registry has to
+    /// produce it. Looking up by value would be answering a question nobody
+    /// asked.
+    fn party(&self, party_id: PartyId) -> Option<Party>;
 }
 
 /// Run the authentication gate.
@@ -287,6 +296,10 @@ mod tests {
                 .iter()
                 .find(|party| party.identity(mechanism, purpose) == Some(value))
                 .cloned()
+        }
+
+        fn party(&self, party_id: PartyId) -> Option<Party> {
+            self.0.iter().find(|party| party.party_id == party_id).cloned()
         }
     }
 
