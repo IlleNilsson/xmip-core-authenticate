@@ -7,7 +7,9 @@ version = "0.1.0"
 edition = "2024"
 license = "AGPL-3.0-or-later"
 repository = "https://github.com/IlleNilsson/xmip-core-authenticate"
-description = "Authentication contracts for identified Xmip Actors."
+description = "The Xmip authentication gate: verify a presented credential, resolve it to a Party."
 
 [dependencies]
+xmip-core = { git = "https://github.com/IlleNilsson/xmip-core", branch = "main" }
 xmip-party = { package = "xmip-core-party", git = "https://github.com/IlleNilsson/xmip-core-party", branch = "main" }
+xmip-context = { package = "xmip-core-context", git = "https://github.com/IlleNilsson/xmip-core-context", branch = "main" }
