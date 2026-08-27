@@ -11,5 +11,5 @@ description = "The Xmip authentication gate: verify a presented credential, reso
 
 [dependencies]
 xmip-core = { git = "https://github.com/IlleNilsson/xmip-core", branch = "main" }
-xmip-party = { package = "xmip-core-party", git = "https://github.com/IlleNilsson/xmip-core-party", branch = "main" }
+xmip-identify = { package = "xmip-core-identify", git = "https://github.com/IlleNilsson/xmip-core-identify", branch = "main" }
 xmip-context = { package = "xmip-core-context", git = "https://github.com/IlleNilsson/xmip-core-context", branch = "main" }
