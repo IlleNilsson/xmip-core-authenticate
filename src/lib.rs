@@ -124,7 +124,10 @@ impl fmt::Display for Refusal {
             }
             Self::NotProven { mechanism, detail } => write!(f, "'{mechanism}' refused: {detail}"),
             Self::PartyNotPermitted { party_id } => {
-                write!(f, "resolved to {party_id}, which this location does not take")
+                write!(
+                    f,
+                    "resolved to {party_id}, which this location does not take"
+                )
             }
         }
     }
@@ -312,7 +315,10 @@ mod tests {
         // all. This is what stops a downgrade to the weakest configured scheme.
         let refusal = authenticate(
             &Acceptance::closed().accepting(&mechanism::mutual_tls()),
-            &[&tls_proves(), &Always(mechanism::api_key(), Verified::Proven)],
+            &[
+                &tls_proves(),
+                &Always(mechanism::api_key(), Verified::Proven),
+            ],
             &registry(),
             &Presented::passed(mechanism::api_key(), "k-123"),
         )
@@ -415,10 +421,7 @@ mod tests {
         // have been proven.
         let identity = authenticate(
             &Acceptance::closed().accepting(&mechanism::edi_x12_interchange()),
-            &[&Always(
-                mechanism::edi_x12_interchange(),
-                Verified::Claimed,
-            )],
+            &[&Always(mechanism::edi_x12_interchange(), Verified::Claimed)],
             &registry(),
             &Presented::detected(mechanism::edi_x12_interchange(), "ISA06=PARTNERX"),
         )
