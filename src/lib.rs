@@ -26,12 +26,12 @@
 
 /// Re-exported so a caller of the second gate does not have to name the first
 /// crate to hold what it produced.
-pub use xmip_identify::Presented;
+pub use identify::Presented;
 
+use context::{AuthenticatedIdentity, Verified};
 use std::error::Error;
 use std::fmt;
-use xmip_context::{AuthenticatedIdentity, Verified};
-use xmip_core::{Mechanism, PartyId, Purpose};
+use xcore::{Mechanism, PartyId, Purpose};
 
 /// What a Receive Location declares it will take. ADR-0019 clause 1.
 ///
@@ -256,7 +256,7 @@ pub fn authenticate(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use xmip_core::mechanism;
+    use xcore::mechanism;
 
     struct Always(Mechanism, Verified);
 
