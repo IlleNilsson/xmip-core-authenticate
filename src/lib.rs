@@ -135,18 +135,7 @@ impl fmt::Display for Refusal {
 
 impl Error for Refusal {}
 
-#[derive(Debug)]
-pub struct AuthenticateError {
-    pub message: String,
-}
-
-impl fmt::Display for AuthenticateError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(&self.message)
-    }
-}
-
-impl Error for AuthenticateError {}
+xcore::declare_error!(AuthenticateError);
 
 /// One mechanism, implemented by one module.
 ///
