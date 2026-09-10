@@ -1,0 +1,54 @@
+[submodule "xmip-core-authenticate-api-key"]
+	path = api-key
+	url = https://github.com/IlleNilsson/xmip-core-authenticate-api-key.git
+[submodule "xmip-core-authenticate-basic"]
+	path = basic
+	url = https://github.com/IlleNilsson/xmip-core-authenticate-basic.git
+[submodule "xmip-core-authenticate-bearer"]
+	path = bearer
+	url = https://github.com/IlleNilsson/xmip-core-authenticate-bearer.git
+[submodule "xmip-core-authenticate-certificate"]
+	path = certificate
+	url = https://github.com/IlleNilsson/xmip-core-authenticate-certificate.git
+[submodule "xmip-core-authenticate-digest"]
+	path = digest
+	url = https://github.com/IlleNilsson/xmip-core-authenticate-digest.git
+[submodule "xmip-core-authenticate-jwt"]
+	path = jwt
+	url = https://github.com/IlleNilsson/xmip-core-authenticate-jwt.git
+[submodule "xmip-core-authenticate-kerberos"]
+	path = kerberos
+	url = https://github.com/IlleNilsson/xmip-core-authenticate-kerberos.git
+[submodule "xmip-core-authenticate-ldap"]
+	path = ldap
+	url = https://github.com/IlleNilsson/xmip-core-authenticate-ldap.git
+[submodule "xmip-core-authenticate-mutual-tls"]
+	path = mutual-tls
+	url = https://github.com/IlleNilsson/xmip-core-authenticate-mutual-tls.git
+[submodule "xmip-core-authenticate-ntlm"]
+	path = ntlm
+	url = https://github.com/IlleNilsson/xmip-core-authenticate-ntlm.git
+[submodule "xmip-core-authenticate-oauth2"]
+	path = oauth2
+	url = https://github.com/IlleNilsson/xmip-core-authenticate-oauth2.git
+[submodule "xmip-core-authenticate-oidc"]
+	path = oidc
+	url = https://github.com/IlleNilsson/xmip-core-authenticate-oidc.git
+[submodule "xmip-core-authenticate-pam"]
+	path = pam
+	url = https://github.com/IlleNilsson/xmip-core-authenticate-pam.git
+[submodule "xmip-core-authenticate-password"]
+	path = password
+	url = https://github.com/IlleNilsson/xmip-core-authenticate-password.git
+[submodule "xmip-core-authenticate-saml"]
+	path = saml
+	url = https://github.com/IlleNilsson/xmip-core-authenticate-saml.git
+[submodule "xmip-core-authenticate-scram"]
+	path = scram
+	url = https://github.com/IlleNilsson/xmip-core-authenticate-scram.git
+[submodule "xmip-core-authenticate-ssh-key"]
+	path = ssh-key
+	url = https://github.com/IlleNilsson/xmip-core-authenticate-ssh-key.git
+[submodule "xmip-core-authenticate-windows"]
+	path = windows
+	url = https://github.com/IlleNilsson/xmip-core-authenticate-windows.git
