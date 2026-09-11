@@ -9,6 +9,10 @@ license = "AGPL-3.0-or-later"
 repository = "https://github.com/IlleNilsson/xmip-core-authenticate"
 description = "The Xmip authentication gate: verify a presented credential, resolve it to a Party."
 
+[lib]
+# A host crate: the technologies mount beside this source (ADR-0049).
+path = ".src/lib.rs"
+
 [dependencies]
 xcore = { package = "xmip-core", git = "https://github.com/IlleNilsson/xmip-core", branch = "main" }
 identify = { package = "xmip-core-identify", git = "https://github.com/IlleNilsson/xmip-core-identify", branch = "main" }
