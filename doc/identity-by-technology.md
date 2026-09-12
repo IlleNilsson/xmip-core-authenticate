@@ -9,7 +9,7 @@ ADR-0019 fixes the rule this document is sorted by:
 > Anything that requires the Message to exist is **message** identity.
 
 Both may be present, either may be absent, and neither substitutes for the
-other. This catalogue exists so that a Receive Location's security
+other. This catalog exists so that a Receive Location's security
 configuration is a lookup rather than an argument.
 
 Every technology named here appears in `architecture.toml`. Where a row says
@@ -76,7 +76,7 @@ which is the entire reason SPF, DKIM and DMARC exist at the message layer:
 
 | Mechanism | Proves | Standard |
 | --- | --- | --- |
-| SPF | the sending host is authorised for the envelope domain | RFC 7208 |
+| SPF | the sending host is authorized for the envelope domain | RFC 7208 |
 | DKIM | the message was signed by the claimed domain and is unaltered | RFC 6376 |
 | DMARC | alignment between the two, plus policy and reporting | **RFC 9989**, which obsoleted RFC 7489 and RFC 9091 in May 2026 |
 
@@ -200,7 +200,7 @@ proves is integrity of the content.
 
 ## 4. What the sort added to the estate
 
-Sorting the catalogue against the standards exposed a gap, now closed:
+Sorting the catalog against the standards exposed a gap, now closed:
 `architecture.toml` gained `xmip-core-transport-as2` and
 `xmip-core-transport-as4` at architectureVersion 0.15.0.
 
@@ -218,7 +218,7 @@ counterparty, and a signed MDN proving receipt. Four facts, four layers, none
 redundant.
 
 The IETF EDIINT working group has `draft-ietf-ediint-rfc4130bis` in progress to
-modernise it, so an implementation should track that rather than freeze on the
+modernize it, so an implementation should track that rather than freeze on the
 2005 text.
 
 **AS4** (OASIS ebMS 3.0 AS4 profile) is the same argument in European public
@@ -256,7 +256,7 @@ alignment      = "none"      # none | relaxed | strict
 onMisalignment = "accept"    # accept | quarantine | reject
 ```
 
-The default is `none`, because the technologies in this catalogue that carry
+The default is `none`, because the technologies in this catalog that carry
 two identities are overwhelmingly the relaying ones.
 
 ---
