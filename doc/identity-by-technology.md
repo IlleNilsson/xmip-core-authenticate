@@ -202,8 +202,7 @@ proves is integrity of the content.
 
 Sorting the catalogue against the standards exposed a gap, now closed:
 `architecture.toml` gained `xmip-core-transport-as2` and
-`xmip-core-transport-as4` at architectureVersion 0.15.0, taking the estate from
-292 repositories to 294.
+`xmip-core-transport-as4` at architectureVersion 0.15.0.
 
 **AS2** — RFC 4130 — the second
 EDIINT applicability statement, after AS1 over SMTP in RFC 3335. Structured
@@ -267,15 +266,9 @@ two identities are overwhelmingly the relaying ones.
 Identity is one thing a transport specification governs. The specification a
 Module implements against is another, and it belongs beside it:
 
-| Module | Implements against |
-| --- | --- |
-| `xmip-core-transport-file` | Platform file-system behaviour and the Rust file-system APIs |
-| `xmip-core-transport-tcp` | IETF RFC 9293 |
-| `xmip-core-transport-http` | IETF RFC 9110, with the applicable HTTP/1.1, HTTP/2 and HTTP/3 specifications. Depends on `xmip-core-transport-tcp` |
-| `xmip-core-transport-websocket` | IETF RFC 6455 and applicable extensions. Depends on `xmip-core-transport-http` |
-| `xmip-core-transport-mllp` | MLLP framing over TCP. Depends on `xmip-core-transport-tcp` |
-| `xmip-core-contract-json-schema` | JSON Schema specifications and vocabularies |
-| `xmip-core-contract-xml-schema` | W3C XML Schema specifications |
+The specification each module implements against is the `specification` field
+of its entry in `architecture.toml` (`doc/architecture/repository-model.md`,
+section 5b); this document does not repeat the table.
 
 Representation and Path collaborators stay separate repositories:
 `xmip-core-message-json` with `xmip-core-path-json-pointer`,
