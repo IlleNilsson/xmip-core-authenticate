@@ -1,2 +1,2 @@
-# xmip-authenticate
+# xmip-core-authenticate
 Authenticates identified Actors.
