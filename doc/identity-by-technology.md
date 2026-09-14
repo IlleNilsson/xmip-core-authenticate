@@ -200,47 +200,20 @@ proves is integrity of the content.
 
 ## 4. What the sort added to the estate
 
-Sorting the catalog against the standards exposed a gap, now closed:
-`architecture.toml` gained `xmip-core-transport-as2` and
-`xmip-core-transport-as4` at architectureVersion 0.15.0.
+Sorting the catalog against the standards found AS2 and AS4 absent; both are
+declared in `architecture.toml` now, and the manifest carries what each
+depends on.
 
-**AS2** — RFC 4130 — the second
-EDIINT applicability statement, after AS1 over SMTP in RFC 3335. Structured
-business data, X12 or EDIFACT or XML, packaged in MIME, authenticated and
-encrypted with Cryptographic Message Syntax in S/MIME body parts, and
-acknowledged by a `multipart/signed` Message Disposition Notification. It is the
-dominant standard for internet EDI — retail, Drummond certification — and
-BizTalk ships it as a first-class adapter.
-
-It is also the single cleanest example of this document's whole argument: HTTPS
-for the channel, S/MIME for the sender, X12 or EDIFACT identifiers for the
+**AS2** (RFC 4130; `draft-ietf-ediint-rfc4130bis` is the text to track) is
+the single cleanest example of this document's whole argument: HTTPS for the
+channel, S/MIME for the sender, X12 or EDIFACT identifiers for the
 counterparty, and a signed MDN proving receipt. Four facts, four layers, none
-redundant.
-
-The IETF EDIINT working group has `draft-ietf-ediint-rfc4130bis` in progress to
-modernize it, so an implementation should track that rather than freeze on the
-2005 text.
-
-**AS4** (OASIS ebMS 3.0 AS4 profile) is the same argument in European public
-procurement and energy, and is equally absent.
-
-Both are transports in the Xmip sense, and both are declared with explicit
-technology-to-technology dependencies — the case `repository-model.md`
-section 4 requires to be declared rather than inferred:
-
-```toml
-[xmip.core.transport.as2]
-dependency = ["xmip-core-transport-http", "xmip-core-message-multipart",
-              "xmip-core-authenticate-certificate"]
-
-[xmip.core.transport.as4]
-dependency = ["xmip-core-transport-http", "xmip-core-logic-soap",
-              "xmip-core-authenticate-certificate"]
-```
-
-A transport that depends on the message layer looks like a layering violation
-and is not one. AS2's signing *is* S/MIME over MIME parts, and AS4's *is*
-WS-Security over SOAP. The dependency is real, so it is declared.
+redundant. **AS4** (the OASIS ebMS 3.0 AS4 profile) is the same argument in
+European public procurement and energy. A transport that depends on the
+message layer looks like a layering violation and is not one: AS2's signing
+*is* S/MIME over MIME parts, and AS4's *is* WS-Security over SOAP, which is why
+each declares the dependency rather than leaving it to be inferred
+(`repository-model.md` section 4).
 
 ## 5. Alignment
 
