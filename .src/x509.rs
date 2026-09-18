@@ -15,6 +15,11 @@
 pub mod name;
 pub mod revocation;
 
+#[cfg(feature = "x509-alt")]
+pub mod alt;
+#[cfg(feature = "x509-alt")]
+pub mod der;
+
 #[cfg(feature = "mint")]
 pub mod mint;
 
@@ -112,6 +117,28 @@ impl Anchors {
     }
 }
 
+/// The path the walk proved: the leaf, the intermediates it went through in
+/// that order, and the anchor it reached — every certificate, so that a
+/// second walk, the alternative signatures' say, follows the same one.
+#[derive(Clone, Debug)]
+pub struct Path {
+    certificates: Vec<CertificateDer<'static>>,
+}
+
+impl Path {
+    /// Leaf first, anchor last.
+    #[must_use]
+    pub fn certificates(&self) -> &[CertificateDer<'static>] {
+        &self.certificates
+    }
+
+    /// The anchor the path reached.
+    #[must_use]
+    pub fn anchor(&self) -> &CertificateDer<'static> {
+        &self.certificates[self.certificates.len() - 1]
+    }
+}
+
 /// What the leaf must be for, by its extended key usage.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum Usage {
@@ -136,8 +163,8 @@ impl ExtendedKeyUsageValidator for Usage {
 
 /// Walk the chain to one of the anchors, at `now` (seconds since the Unix
 /// epoch), for `usage`, against the revocation lists where given. Answers
-/// nothing on success; every refusal names its reason in words an operator
-/// can act on.
+/// with the path it proved; every refusal names its reason in words an
+/// operator can act on.
 ///
 /// # Errors
 ///
@@ -149,14 +176,14 @@ pub fn verify(
     usage: Usage,
     revocation: Option<&Revocation>,
     now: i64,
-) -> Result<(), AuthenticateError> {
+) -> Result<Path, AuthenticateError> {
     if anchors.is_empty() {
         return Err(AuthenticateError::new(
             "the node holds no trust anchor, so no chain can be verified",
         ));
     }
 
-    let anchors = anchors
+    let trusted = anchors
         .certificates
         .iter()
         .map(|certificate| {
@@ -173,17 +200,42 @@ pub fn verify(
         lists.as_ref().map(|lists| lists.iter().collect());
     let options = references.as_deref().map(Revocation::options).transpose()?;
 
-    leaf.verify_for_usage(
-        webpki::ALL_VERIFICATION_ALGS,
-        &anchors,
-        chain.intermediates(),
-        time,
-        usage,
-        options,
-        None,
-    )
-    .map(|_| ())
-    .map_err(|failure| AuthenticateError::new(said(&failure)))
+    let proved = leaf
+        .verify_for_usage(
+            webpki::ALL_VERIFICATION_ALGS,
+            &trusted,
+            chain.intermediates(),
+            time,
+            usage,
+            options,
+            None,
+        )
+        .map_err(|failure| AuthenticateError::new(said(&failure)))?;
+
+    let mut certificates = vec![chain.leaf().clone()];
+    certificates.extend(
+        proved
+            .intermediate_certificates()
+            .map(|certificate| certificate.der().into_owned()),
+    );
+    let reached: &[u8] = proved.anchor().subject_public_key_info.as_ref();
+    let anchor = anchors
+        .certificates
+        .iter()
+        .find(|certificate| spki_of(certificate).is_some_and(|spki| spki.ends_with(reached)))
+        .ok_or_else(|| AuthenticateError::new("the anchor the path reached is not one held"))?;
+    certificates.push(anchor.clone());
+
+    Ok(Path { certificates })
+}
+
+/// A certificate's `subjectPublicKeyInfo`, as its DER.
+fn spki_of<'a>(certificate: &'a CertificateDer<'_>) -> Option<&'a [u8]> {
+    use x509_parser::prelude::{FromDer, X509Certificate};
+
+    X509Certificate::from_der(certificate.as_ref())
+        .ok()
+        .map(|(_, parsed)| parsed.tbs_certificate.subject_pki.raw)
 }
 
 /// The refusal in words, for the reasons an operator meets.
@@ -233,8 +285,13 @@ mod tests {
         let chain = Chain::from_pem(&issued.pem).expect("a chain");
         let anchors = Anchors::from_pem(&root.pem()).expect("anchors");
 
-        verify(&chain, &anchors, Usage::ClientAuth, None, NOW).expect("verified");
+        let path = verify(&chain, &anchors, Usage::ClientAuth, None, NOW).expect("verified");
         assert_eq!(chain.intermediates().len(), 1);
+        assert_eq!(path.certificates().len(), 3, "leaf, intermediate, anchor");
+        assert_eq!(
+            path.anchor().as_ref(),
+            Chain::from_pem(&root.pem()).expect("root").leaf().as_ref()
+        );
         assert!(chain.fingerprint().starts_with("SHA256:"));
         assert_eq!(chain.fingerprint().len(), 7 + 64);
     }
