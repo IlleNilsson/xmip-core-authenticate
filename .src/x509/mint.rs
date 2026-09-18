@@ -8,8 +8,8 @@
 
 use rcgen::{
     BasicConstraints, Certificate, CertificateParams, CertificateRevocationListParams, DnType,
-    ExtendedKeyUsagePurpose, IsCa, KeyIdMethod, KeyPair, KeyUsagePurpose, RevokedCertParams,
-    SerialNumber,
+    ExtendedKeyUsagePurpose, IsCa, KeyIdMethod, KeyPair, KeyUsagePurpose, OtherNameValue,
+    RevokedCertParams, SanType, SerialNumber,
 };
 use time::OffsetDateTime;
 
@@ -103,6 +103,39 @@ impl Authority {
     pub fn issue(&self, common_name: &str, not_before: i64, not_after: i64) -> Issued {
         let key = KeyPair::generate().expect("a key pair");
         let params = leaf_params(common_name, not_before, not_after);
+        let serial = params.serial_number.clone().expect("a serial");
+        let certificate = self.sign_leaf(params, &key, self.alt_signer());
+        let mut pem = certificate.pem();
+        pem.push_str(&self.certificate_pem_if_intermediate());
+
+        for parent in &self.above {
+            pem.push_str(parent);
+        }
+
+        Issued { pem, serial }
+    }
+
+    /// A leaf as [`Authority::issue`] makes it, carrying a user principal
+    /// name the way a smart-card certificate does: a subjectAltName otherName
+    /// under Microsoft's UPN object identifier (ADR-0054).
+    ///
+    /// # Panics
+    ///
+    /// Key generation or signing fails.
+    #[must_use]
+    pub fn issue_for_user(
+        &self,
+        common_name: &str,
+        principal: &str,
+        not_before: i64,
+        not_after: i64,
+    ) -> Issued {
+        let key = KeyPair::generate().expect("a key pair");
+        let mut params = leaf_params(common_name, not_before, not_after);
+        params.subject_alt_names.push(SanType::OtherName((
+            vec![1, 3, 6, 1, 4, 1, 311, 20, 2, 3],
+            OtherNameValue::Utf8String(principal.to_string()),
+        )));
         let serial = params.serial_number.clone().expect("a serial");
         let certificate = self.sign_leaf(params, &key, self.alt_signer());
         let mut pem = certificate.pem();
@@ -295,65 +328,8 @@ impl Authority {
     }
 }
 
-/// The two-pass signing a hybrid certificate takes: the alternative
-/// signature covers the certificate without its own extension and without
-/// the classical `signature` field, so the certificate is signed once to
-/// learn those bytes, alternative-signed, then signed again with the
-/// alternative signature in place. The classical signature covers all three
-/// extensions, as ITU-T X.509 (10/2019) clause 7.2.2 says.
 #[cfg(feature = "x509-alt")]
-mod hybrid {
-    use super::super::der;
-    use aws_lc_rs::encoding::{AsDer, PublicKeyX509Der};
-    use aws_lc_rs::signature::{KeyPair as _, PqdsaKeyPair};
-    use rcgen::{Certificate, CertificateParams, CustomExtension, KeyPair};
-    use rustls_pki_types::alg_id;
-
-    const SUBJECT_ALT_PUBLIC_KEY_INFO: &[u64] = &[2, 5, 29, 72];
-    const ALT_SIGNATURE_ALGORITHM: &[u64] = &[2, 5, 29, 73];
-    const ALT_SIGNATURE_VALUE: &[u64] = &[2, 5, 29, 74];
-
-    pub(super) fn sign(
-        mut params: CertificateParams,
-        key: &KeyPair,
-        own_alt: &PqdsaKeyPair,
-        alt_signer: &PqdsaKeyPair,
-        classical: &dyn Fn(CertificateParams, &KeyPair) -> Certificate,
-    ) -> Certificate {
-        let public: PublicKeyX509Der<'_> = own_alt.public_key().as_der().expect("an SPKI");
-        params
-            .custom_extensions
-            .push(CustomExtension::from_oid_content(
-                SUBJECT_ALT_PUBLIC_KEY_INFO,
-                public.as_ref().to_vec(),
-            ));
-        params
-            .custom_extensions
-            .push(CustomExtension::from_oid_content(
-                ALT_SIGNATURE_ALGORITHM,
-                der::encode(0x30, alg_id::ML_DSA_65.as_ref()),
-            ));
-
-        let draft = classical(params.clone(), key);
-        let signed = der::pre_tbs(draft.der()).expect("a pre-TBS");
-        let mut signature = vec![0u8; 8_192];
-        let length = alt_signer
-            .sign(&signed, &mut signature)
-            .expect("an ML-DSA signature");
-        signature.truncate(length);
-
-        let mut bits = vec![0u8];
-        bits.extend(signature);
-        params
-            .custom_extensions
-            .push(CustomExtension::from_oid_content(
-                ALT_SIGNATURE_VALUE,
-                der::encode(0x03, &bits),
-            ));
-
-        classical(params, key)
-    }
-}
+mod hybrid;
 
 fn authority_params(name: &str) -> CertificateParams {
     let mut params = CertificateParams::new(Vec::<String>::new()).expect("params");

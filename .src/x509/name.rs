@@ -10,6 +10,7 @@
 //! A claim may also be a DNS name the leaf's alternative names carry.
 
 use crate::AuthenticateError;
+use identify::UserPrincipalName;
 use rustls_pki_types::CertificateDer;
 use std::fmt;
 use x509_parser::extensions::GeneralName;
@@ -84,8 +85,37 @@ impl Name {
             .collect())
     }
 
-    /// Whether a certificate names the claim: as its subject, or as one of
-    /// its DNS names.
+    /// The user principal name a certificate carries, where it carries one:
+    /// the subjectAltName otherName under Microsoft's UPN object identifier,
+    /// 1.3.6.1.4.1.311.20.2.3, which is how a smart-card logon certificate
+    /// says whose it is (ADR-0054).
+    ///
+    /// # Errors
+    ///
+    /// The bytes are not an X.509 certificate, or the extension is malformed.
+    pub fn user_principal_of(
+        certificate: &CertificateDer<'_>,
+    ) -> Result<Option<UserPrincipalName>, AuthenticateError> {
+        let (_, parsed) = X509Certificate::from_der(certificate.as_ref())
+            .map_err(|failure| AuthenticateError::new(format!("not X.509: {failure}")))?;
+        let alternative = parsed.subject_alternative_name().map_err(|failure| {
+            AuthenticateError::new(format!("the alternative names do not read: {failure}"))
+        })?;
+
+        Ok(alternative
+            .into_iter()
+            .flat_map(|extension| extension.value.general_names.iter())
+            .find_map(|name| match name {
+                GeneralName::OtherName(kind, value) if kind.to_id_string() == UPN => {
+                    utf8_within(value).and_then(|text| UserPrincipalName::parse(&text))
+                }
+                _ => None,
+            }))
+    }
+
+    /// Whether a certificate names the claim: as its subject, as one of its
+    /// DNS names, or, where the claim is a user principal name, as the same
+    /// account the certificate carries one for.
     ///
     /// # Errors
     ///
@@ -93,6 +123,12 @@ impl Name {
     pub fn names(certificate: &CertificateDer<'_>, claim: &str) -> Result<bool, AuthenticateError> {
         if Self::subject_of(certificate)? == Self::parse(claim) {
             return Ok(true);
+        }
+
+        if let Some(claimed) = UserPrincipalName::parse(claim)
+            && let Some(carried) = Self::user_principal_of(certificate)?
+        {
+            return Ok(carried.is(&claimed));
         }
 
         Ok(Self::dns_names_of(certificate)?
@@ -136,6 +172,46 @@ impl fmt::Display for Name {
 
         Ok(())
     }
+}
+
+/// Microsoft's object identifier for a user principal name in an otherName.
+const UPN: &str = "1.3.6.1.4.1.311.20.2.3";
+
+/// The text of an otherName value: `[0] EXPLICIT UTF8String`, read without a
+/// DER library because it is two headers and a string.
+fn utf8_within(value: &[u8]) -> Option<String> {
+    let inner = contents(value, 0xA0)?;
+    let text = contents(inner, 0x0C)?;
+
+    String::from_utf8(text.to_vec()).ok()
+}
+
+/// The contents of one DER element with the tag expected, short or long
+/// length, where the bytes hold all of it.
+fn contents(bytes: &[u8], tag: u8) -> Option<&[u8]> {
+    let (&found, rest) = bytes.split_first()?;
+    let (&first, rest) = rest.split_first()?;
+
+    if found != tag {
+        return None;
+    }
+
+    let (length, rest) = if first < 0x80 {
+        (usize::from(first), rest)
+    } else {
+        let count = usize::from(first & 0x7F);
+
+        if count == 0 || count > 2 || rest.len() < count {
+            return None;
+        }
+
+        let length = rest[..count]
+            .iter()
+            .fold(0usize, |length, &byte| (length << 8) | usize::from(byte));
+        (length, &rest[count..])
+    };
+
+    rest.get(..length)
 }
 
 fn push(attributes: &mut Vec<(String, String)>, part: &str) {
@@ -199,6 +275,29 @@ mod tests {
 
         assert_eq!(name.to_string(), "CN=Partner\\, Inc,O=Partner X");
         assert_ne!(name, Name::parse("CN=Partner,O=Partner X"));
+    }
+
+    #[test]
+    fn a_smart_card_certificate_names_its_user_in_either_spelling() {
+        let root = Authority::root("Partner Root");
+        let issued = root.issue_for_user("jane", "Jane@Partner-X.Example", NOW - 10, NOW + 10);
+        let chain = super::super::Chain::from_pem(&issued.pem).expect("a chain");
+
+        let carried = Name::user_principal_of(chain.leaf())
+            .expect("read")
+            .expect("a user principal name");
+        assert_eq!(carried.to_string(), "Jane@partner-x.example");
+        assert!(Name::names(chain.leaf(), "jane@partner-x.example").expect("read"));
+        assert!(Name::names(chain.leaf(), "PARTNER-X.EXAMPLE\\JANE").expect("read"));
+        assert!(!Name::names(chain.leaf(), "john@partner-x.example").expect("read"));
+
+        let plain = root.issue("partner-x.example", NOW - 10, NOW + 10);
+        let chain = super::super::Chain::from_pem(&plain.pem).expect("a chain");
+        assert!(
+            Name::user_principal_of(chain.leaf())
+                .expect("read")
+                .is_none()
+        );
     }
 
     #[test]
