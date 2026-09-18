@@ -26,6 +26,11 @@
 
 pub mod store;
 
+/// X.509 chains, for the two technologies that verify one (ADR-0033). Off
+/// unless a technology turns the `x509` feature on.
+#[cfg(feature = "x509")]
+pub mod x509;
+
 /// Re-exported so a caller of the second gate does not have to name the first
 /// crate to hold what it produced.
 pub use identify::Presented;

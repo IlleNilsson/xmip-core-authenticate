@@ -22,3 +22,26 @@ context = { package = "xmip-core-context", git = "https://github.com/IlleNilsson
 # same two crates transport-http already takes for SigV4.
 sha2 = "0.10"
 hmac = "0.12"
+
+# X.509, shared by `certificate` and `mutual-tls` (ADR-0044) and off unless a
+# technology asks for it, so the sixteen that do not never carry a chain
+# verifier: webpki walks a chain to a trust anchor, checks validity and a
+# CRL, and takes its signature algorithms from ring — the crypto rustls
+# already brought into the estate (ADR-0033); x509-parser reads the subject
+# and the alternative names webpki keeps as bytes. `mint` issues certificates
+# for tests and ships in no build.
+webpki = { package = "rustls-webpki", version = "0.103", features = ["ring"], optional = true }
+rustls-pki-types = { version = "1", optional = true }
+rustls-pemfile = { version = "2", optional = true }
+x509-parser = { version = "0.16", optional = true }
+rcgen = { version = "0.13", optional = true }
+time = { version = "0.3", optional = true }
+
+[features]
+x509 = ["dep:webpki", "dep:rustls-pki-types", "dep:rustls-pemfile", "dep:x509-parser"]
+mint = ["x509", "dep:rcgen", "dep:time"]
+
+[dev-dependencies]
+# The crate tests its own x509 module: a dev-dependency on itself is how
+# Cargo turns a feature on for the tests and for nothing else.
+xmip-core-authenticate = { path = ".", features = ["mint"] }
