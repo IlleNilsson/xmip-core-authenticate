@@ -36,12 +36,17 @@ rustls-pemfile = { version = "2", optional = true }
 x509-parser = { version = "0.16", optional = true }
 rcgen = { version = "0.13", optional = true }
 time = { version = "0.3", optional = true }
+# The alternative, post-quantum signature a hybrid certificate carries
+# (ITU-T X.509 (10/2019) clause 9.8) is ML-DSA, which ring does not have and
+# aws-lc-rs does; its own feature, so a package is quantum-ready or not.
+aws-lc-rs = { version = "1", optional = true, features = ["prebuilt-nasm"] }
 
 [features]
 x509 = ["dep:webpki", "dep:rustls-pki-types", "dep:rustls-pemfile", "dep:x509-parser"]
+x509-alt = ["x509", "dep:aws-lc-rs"]
 mint = ["x509", "dep:rcgen", "dep:time"]
 
 [dev-dependencies]
 # The crate tests its own x509 module: a dev-dependency on itself is how
 # Cargo turns a feature on for the tests and for nothing else.
-xmip-core-authenticate = { path = ".", features = ["mint"] }
+xmip-core-authenticate = { path = ".", features = ["mint", "x509-alt"] }

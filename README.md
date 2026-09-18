@@ -26,3 +26,10 @@ issues roots, intermediates, leaves and CRLs with fresh keys so that every
 verifier tests against a chain minted the same way; it ships in no build.
 The crate tests its own module through a dev-dependency on itself with
 `mint` on, which is how Cargo turns a feature on for the tests alone.
+
+`x509-alt` adds the alternative, post-quantum signature a hybrid certificate
+carries (ITU-T X.509 (10/2019) clause 9.8): ML-DSA in its three parameter
+sets, verified by aws-lc-rs along the very path the classical walk proved,
+under a policy of ignored, where present or required. Its own feature
+because ring has none, so a package is quantum-ready or not (ADR-0033,
+amendment 2026-09-18). Composite signatures are the next slice.
