@@ -17,3 +17,8 @@ path = ".src/lib.rs"
 xcore = { package = "xmip-core", git = "https://github.com/IlleNilsson/xmip-core", branch = "main" }
 identify = { package = "xmip-core-identify", git = "https://github.com/IlleNilsson/xmip-core-identify", branch = "main" }
 context = { package = "xmip-core-context", git = "https://github.com/IlleNilsson/xmip-core-context", branch = "main" }
+# The credential store (ADR-0050 section 6): PBKDF2-HMAC-SHA256 verifiers
+# that password, basic, digest and scram share. Pure Rust, no unsafe, the
+# same two crates transport-http already takes for SigV4.
+sha2 = "0.10"
+hmac = "0.12"

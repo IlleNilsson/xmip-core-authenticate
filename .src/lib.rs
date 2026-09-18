@@ -24,6 +24,8 @@
 //! before checking who the caller was. Authentication verifies the presented
 //! credential and *resolves it to* a Party, per ADR-0019 clause 4.
 
+pub mod store;
+
 /// Re-exported so a caller of the second gate does not have to name the first
 /// crate to hold what it produced.
 pub use identify::Presented;
