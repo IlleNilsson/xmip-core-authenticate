@@ -24,6 +24,7 @@
 //! before checking who the caller was. Authentication verifies the presented
 //! credential and *resolves it to* a Party, per ADR-0019 clause 4.
 
+pub mod conclusion;
 pub mod store;
 
 /// X.509 chains, for the two technologies that verify one (ADR-0033). Off
@@ -34,6 +35,8 @@ pub mod x509;
 /// Re-exported so a caller of the second gate does not have to name the first
 /// crate to hold what it produced.
 pub use identify::Presented;
+
+pub use conclusion::Conclusion;
 
 use context::{AuthenticatedIdentity, Verified};
 use std::error::Error;
@@ -154,6 +157,18 @@ pub trait Authenticator: Send + Sync {
     /// [`Verified::Claimed`] is a legitimate answer for a mechanism carrying no
     /// cryptography.
     fn verify(&self, presented: &Presented) -> Result<Verified, AuthenticateError>;
+
+    /// Verify the claim and say what verifying taught: the client a ticket
+    /// sealed, the scopes an authorization server answered with (ADR-0054).
+    /// The gate calls this and not [`Authenticator::verify`]; a mechanism
+    /// that learns nothing keeps the default, which is the verdict alone.
+    ///
+    /// # Errors
+    ///
+    /// As [`Authenticator::verify`].
+    fn conclude(&self, presented: &Presented) -> Result<Conclusion, AuthenticateError> {
+        self.verify(presented).map(Conclusion::of)
+    }
 }
 
 /// Where a verified value is looked up.
@@ -207,12 +222,13 @@ pub fn authenticate(
             mechanism: presented.mechanism.name().to_string(),
         })?;
 
-    let verified = authenticator
-        .verify(presented)
-        .map_err(|failure| Refusal::NotProven {
-            mechanism: presented.mechanism.name().to_string(),
-            detail: failure.message,
-        })?;
+    let Conclusion { verified, learned } =
+        authenticator
+            .conclude(presented)
+            .map_err(|failure| Refusal::NotProven {
+                mechanism: presented.mechanism.name().to_string(),
+                detail: failure.message,
+            })?;
 
     if verified == Verified::Refused {
         return Err(Refusal::NotProven {
@@ -228,7 +244,15 @@ pub fn authenticate(
         verified,
     );
 
-    for (name, value) in &presented.evidence {
+    // What verifying taught is the mechanism's own word and takes the place
+    // of a presented pair of the same name: a claimed `principal.user` does
+    // not stand beside a verified one.
+    let claimed = presented
+        .evidence
+        .iter()
+        .filter(|(name, _)| learned.iter().all(|(taught, _)| taught != name));
+
+    for (name, value) in claimed.chain(&learned) {
         identity = identity.with_evidence(name, value);
     }
 
@@ -284,6 +308,53 @@ mod tests {
             Purpose::Receive,
             "CN=partner-x.example",
         )])
+    }
+
+    /// Proves, and learns the client by proving, as a ticket does.
+    struct Learns;
+
+    impl Authenticator for Learns {
+        fn mechanism(&self) -> Mechanism {
+            mechanism::kerberos()
+        }
+
+        fn verify(&self, presented: &Presented) -> Result<Verified, AuthenticateError> {
+            self.conclude(presented)
+                .map(|conclusion| conclusion.verified)
+        }
+
+        fn conclude(&self, _presented: &Presented) -> Result<Conclusion, AuthenticateError> {
+            Ok(Conclusion::proven().learning("principal.user", "jane@corp.example"))
+        }
+    }
+
+    #[test]
+    fn what_verifying_taught_is_on_the_identity_in_place_of_what_was_claimed() {
+        let presented = Presented::passed(mechanism::kerberos(), "HTTP/xmip.example")
+            .with_evidence("principal.user", "mallory@corp.example")
+            .with_evidence("principal.service", "HTTP/xmip.example");
+
+        let identity = authenticate(
+            &Acceptance::closed().accepting(&mechanism::kerberos()),
+            &[&Learns],
+            &registry(),
+            &presented,
+        )
+        .expect("accepted");
+
+        let users: Vec<&str> = identity
+            .evidence
+            .iter()
+            .filter(|(name, _)| name == "principal.user")
+            .map(|(_, value)| value.as_str())
+            .collect();
+        assert_eq!(users, ["jane@corp.example"]);
+        assert!(
+            identity
+                .evidence
+                .iter()
+                .any(|(name, _)| name == "principal.service")
+        );
     }
 
     fn tls_proves() -> Always {
