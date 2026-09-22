@@ -148,6 +148,13 @@ impl Error for Refusal {}
 xcore::declare_error!(AuthenticateError);
 
 /// X.690 that is not what it says it is, in a credential a technology reads.
+/// What the first gate could not read, refused here in the same words.
+impl From<identify::IdentifyError> for AuthenticateError {
+    fn from(error: identify::IdentifyError) -> Self {
+        Self::new(error.message)
+    }
+}
+
 impl From<asn1::Asn1Error> for AuthenticateError {
     fn from(error: asn1::Asn1Error) -> Self {
         Self::new(error.message)
