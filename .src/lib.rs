@@ -147,6 +147,13 @@ impl Error for Refusal {}
 
 xcore::declare_error!(AuthenticateError);
 
+/// X.690 that is not what it says it is, in a credential a technology reads.
+impl From<asn1::Asn1Error> for AuthenticateError {
+    fn from(error: asn1::Asn1Error) -> Self {
+        Self::new(error.message)
+    }
+}
+
 /// One mechanism, implemented by one module.
 ///
 /// `xmip-core-authenticate-mutual-tls`, `-kerberos`, `-oauth2` and the rest.

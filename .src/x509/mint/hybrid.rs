@@ -33,7 +33,7 @@ pub(super) fn sign(
         .custom_extensions
         .push(CustomExtension::from_oid_content(
             ALT_SIGNATURE_ALGORITHM,
-            der::encode(0x30, alg_id::ML_DSA_65.as_ref()),
+            asn1::tlv(0x30, alg_id::ML_DSA_65.as_ref()),
         ));
 
     let draft = classical(params.clone(), key);
@@ -50,7 +50,7 @@ pub(super) fn sign(
         .custom_extensions
         .push(CustomExtension::from_oid_content(
             ALT_SIGNATURE_VALUE,
-            der::encode(0x03, &bits),
+            asn1::tlv(0x03, &bits),
         ));
 
     classical(params, key)

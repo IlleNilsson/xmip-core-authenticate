@@ -55,7 +55,7 @@ pub enum MlDsa {
 impl MlDsa {
     /// The set an `AlgorithmIdentifier` names, where it is one of the three.
     fn named(algorithm: &[u8]) -> Option<Self> {
-        let (0x30, contents, _) = der::split(algorithm).ok()? else {
+        let (0x30, contents, _) = asn1::read(algorithm).ok()? else {
             return None;
         };
 
@@ -173,7 +173,7 @@ fn carried(certificate: &CertificateDer<'_>) -> Result<Alternative, Authenticate
                     "the alternative signature's algorithm is not an ML-DSA this build verifies",
                 )
             })?;
-            let (0x03, bits, _) = der::split(value.value)? else {
+            let (0x03, bits, _) = asn1::read(value.value)? else {
                 return Err(AuthenticateError::new("altSignatureValue is a BIT STRING"));
             };
             let (&unused, bytes) = bits.split_first().ok_or_else(|| {

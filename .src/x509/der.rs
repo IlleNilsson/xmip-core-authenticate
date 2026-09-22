@@ -1,12 +1,14 @@
-//! The few DER moves an alternative signature needs: reading a tag, a
-//! length and a value, writing them back, and re-encoding a certificate's
+//! The DER move an alternative signature needs: re-encoding a certificate's
 //! `tbsCertificate` without the two parts the alternative signature does not
 //! cover (ITU-T X.509 (10/2019) clause 7.2.2): the `signature` field, which
 //! names the classical algorithm, and the `altSignatureValue` extension,
 //! which is the alternative signature itself. Nothing else is interpreted;
-//! every other byte is copied as it lies.
+//! every other byte is copied as it lies. Reading and writing an element is
+//! the estate's one X.690 reader, `xmip-core-asn1`, which this file carried a
+//! copy of until 2026-09-22.
 
 use crate::AuthenticateError;
+use asn1::{read as split, read_all as elements, tlv as encode};
 
 const SEQUENCE: u8 = 0x30;
 const OBJECT_IDENTIFIER: u8 = 0x06;
@@ -15,76 +17,6 @@ const EXTENSIONS: u8 = 0xA3;
 
 /// `altSignatureValue`, 2.5.29.74, as the OBJECT IDENTIFIER's contents.
 const ALT_SIGNATURE_VALUE: &[u8] = &[0x55, 0x1D, 0x4A];
-
-/// One tag, its value, and what follows.
-pub(super) fn split(bytes: &[u8]) -> Result<(u8, &[u8], &[u8]), AuthenticateError> {
-    let (&tag, after_tag) = bytes
-        .split_first()
-        .ok_or_else(|| AuthenticateError::new("DER ends where a tag should be"))?;
-    let (&first, after_first) = after_tag
-        .split_first()
-        .ok_or_else(|| AuthenticateError::new("DER ends where a length should be"))?;
-    let (length, rest) = if first < 0x80 {
-        (usize::from(first), after_first)
-    } else {
-        let count = usize::from(first & 0x7F);
-
-        if count == 0 || count > 4 || after_first.len() < count {
-            return Err(AuthenticateError::new(
-                "DER length is not definite and short",
-            ));
-        }
-
-        let length = after_first[..count]
-            .iter()
-            .fold(0usize, |length, &byte| (length << 8) | usize::from(byte));
-        (length, &after_first[count..])
-    };
-
-    if rest.len() < length {
-        return Err(AuthenticateError::new(
-            "DER value is shorter than its length says",
-        ));
-    }
-
-    let (value, following) = rest.split_at(length);
-    Ok((tag, value, following))
-}
-
-/// A tag and a value, written with the shortest length.
-pub(super) fn encode(tag: u8, value: &[u8]) -> Vec<u8> {
-    let mut bytes = vec![tag];
-    let length = value.len();
-
-    if length < 0x80 {
-        bytes.push(u8::try_from(length).unwrap_or(0x7F));
-    } else {
-        let octets = length.to_be_bytes();
-        let significant: Vec<u8> = octets
-            .iter()
-            .copied()
-            .skip_while(|&byte| byte == 0)
-            .collect();
-        bytes.push(0x80 | u8::try_from(significant.len()).unwrap_or(0x7F));
-        bytes.extend(significant);
-    }
-
-    bytes.extend_from_slice(value);
-    bytes
-}
-
-/// Every element in a SEQUENCE's contents, in order.
-pub(super) fn elements(mut contents: &[u8]) -> Result<Vec<(u8, &[u8])>, AuthenticateError> {
-    let mut found = Vec::new();
-
-    while !contents.is_empty() {
-        let (tag, value, rest) = split(contents)?;
-        found.push((tag, value));
-        contents = rest;
-    }
-
-    Ok(found)
-}
 
 /// The certificate's `tbsCertificate` re-encoded without its `signature`
 /// field and without the `altSignatureValue` extension: what the alternative
