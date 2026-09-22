@@ -147,6 +147,13 @@ impl Error for Refusal {}
 
 xcore::declare_error!(AuthenticateError);
 
+/// Text that is not the encoding it claims, in a credential a technology reads.
+impl From<codec::CodecError> for AuthenticateError {
+    fn from(error: codec::CodecError) -> Self {
+        Self::new(error.message)
+    }
+}
+
 /// X.690 that is not what it says it is, in a credential a technology reads.
 /// What the first gate could not read, refused here in the same words.
 impl From<identify::IdentifyError> for AuthenticateError {
