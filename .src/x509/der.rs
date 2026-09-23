@@ -4,7 +4,7 @@
 //! names the classical algorithm, and the `altSignatureValue` extension,
 //! which is the alternative signature itself. Nothing else is interpreted;
 //! every other byte is copied as it lies. Reading and writing an element is
-//! the estate's one X.690 reader, `xmip-core-asn1`, which this file carried a
+//! the estate's one X.690 reader, `xmip-core-library-asn1`, which this file carried a
 //! copy of until 2026-09-22.
 
 use crate::AuthenticateError;
