@@ -26,6 +26,7 @@
 
 pub mod clock;
 pub mod conclusion;
+pub mod secret;
 pub mod store;
 
 /// X.509 chains, for the two technologies that verify one (ADR-0033). Off
@@ -38,13 +39,10 @@ pub mod x509;
 #[cfg(feature = "jose")]
 pub mod jose;
 
-/// Re-exported so a caller of the second gate does not have to name the first
-/// crate to hold what it produced.
-pub use identify::Presented;
-
 pub use conclusion::Conclusion;
 
 use context::{AuthenticatedIdentity, Verified};
+use identify::Presented;
 use std::error::Error;
 use std::fmt;
 use xcore::{Mechanism, PartyId, Purpose};
@@ -160,7 +158,6 @@ impl From<codec::CodecError> for AuthenticateError {
     }
 }
 
-/// X.690 that is not what it says it is, in a credential a technology reads.
 /// What the first gate could not read, refused here in the same words.
 impl From<identify::IdentifyError> for AuthenticateError {
     fn from(error: identify::IdentifyError) -> Self {
@@ -168,6 +165,15 @@ impl From<identify::IdentifyError> for AuthenticateError {
     }
 }
 
+/// An NTLM message that is not what it says it is, in a credential a
+/// technology reads.
+impl From<ntlm::NtlmError> for AuthenticateError {
+    fn from(error: ntlm::NtlmError) -> Self {
+        Self::new(error.message)
+    }
+}
+
+/// X.690 that is not what it says it is, in a credential a technology reads.
 impl From<asn1::Asn1Error> for AuthenticateError {
     fn from(error: asn1::Asn1Error) -> Self {
         Self::new(error.message)

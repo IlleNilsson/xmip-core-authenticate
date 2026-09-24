@@ -21,6 +21,20 @@ it holds a credential to: `[not_before, not_on_or_after)`, as RFC 7519 and
 SAML Core say, widened by a leeway at both ends. Ten technologies carried
 their own `now()` and their own reading of the bound until 2026-09-24.
 
+## The stores
+
+`authenticate::store` is the credential store the password-shaped verifiers
+share — `password`, `basic`, `digest` and `scram` — holding a SCRAM-SHA-256
+verifier and never the password. `authenticate::secret` is the hashed secret
+store with expiry `api-key` and `bearer` verify against: a secret the node
+minted with full entropy, kept as its SHA-256 under the name it was issued
+to. Until 2026-09-24 `api-key` and `bearer` each carried the second.
+
+## The claim is identify's
+
+A verifier is handed `identify::Presented`, and names it from `identify`:
+this crate re-exports nothing of the first gate's (the owner, 2026-09-24).
+
 ## JOSE keys, behind a feature
 
 `jwt` and `oidc` verify a JWS with the same keys. The `jose` feature turns on

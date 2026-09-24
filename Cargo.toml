@@ -22,6 +22,8 @@ context = { package = "xmip-core-context", git = "https://github.com/IlleNilsson
 asn1 = { package = "xmip-core-library-asn1", git = "https://github.com/IlleNilsson/xmip-core-library-asn1", branch = "main" }
 # Encoding primitives, whose failures this crate's error takes with `From`.
 codec = { package = "xmip-core-library-codec", git = "https://github.com/IlleNilsson/xmip-core-library-codec", branch = "main" }
+# The NTLM message layout, whose failures this crate's error takes with `From`.
+ntlm = { package = "xmip-core-library-ntlm", git = "https://github.com/IlleNilsson/xmip-core-library-ntlm", branch = "main" }
 # The credential store (ADR-0050 section 6): PBKDF2-HMAC-SHA256 verifiers
 # that password, basic, digest and scram share. Pure Rust, no unsafe, the
 # same two crates transport-http already takes for SigV4.
