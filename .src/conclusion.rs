@@ -13,11 +13,6 @@
 
 use context::Verified;
 
-/// The evidence name a token's scopes are learned under: the space-separated
-/// list as the token or its authorization server stated it (RFC 6749 section
-/// 3.3). `authorize/scope` reads this name and nothing else.
-pub const SCOPE: &str = "scope";
-
 /// A verdict, and the evidence learned in reaching it.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Conclusion {

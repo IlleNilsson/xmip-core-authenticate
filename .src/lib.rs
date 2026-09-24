@@ -24,6 +24,7 @@
 //! before checking who the caller was. Authentication verifies the presented
 //! credential and *resolves it to* a Party, per ADR-0019 clause 4.
 
+pub mod clock;
 pub mod conclusion;
 pub mod store;
 
@@ -31,6 +32,11 @@ pub mod store;
 /// unless a technology turns the `x509` feature on.
 #[cfg(feature = "x509")]
 pub mod x509;
+
+/// JOSE keys and key sets, for the two technologies that verify a JWS
+/// (ADR-0050). Off unless a technology turns the `jose` feature on.
+#[cfg(feature = "jose")]
+pub mod jose;
 
 /// Re-exported so a caller of the second gate does not have to name the first
 /// crate to hold what it produced.
