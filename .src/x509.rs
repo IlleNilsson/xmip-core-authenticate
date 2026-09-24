@@ -74,14 +74,7 @@ impl Chain {
     #[must_use]
     pub fn fingerprint(&self) -> String {
         let digest = Sha256::digest(self.leaf().as_ref());
-        let mut text = String::with_capacity(7 + digest.len() * 2);
-        text.push_str("SHA256:");
-
-        for byte in digest {
-            text.push_str(&format!("{byte:02x}"));
-        }
-
-        text
+        format!("SHA256:{}", codec::hex::encode(&digest))
     }
 }
 

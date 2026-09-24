@@ -21,6 +21,7 @@
 //! needs the same primitives to compute a client signature, and a test needs
 //! them to play the client.
 
+use codec::hex;
 use hmac::{Hmac, Mac};
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
@@ -83,12 +84,6 @@ pub fn constant_time_eq(left: &[u8], right: &[u8]) -> bool {
         .zip(right)
         .fold(0u8, |acc, (a, b)| acc | (a ^ b));
     core::hint::black_box(difference) == 0
-}
-
-/// Lower-case hexadecimal, as Digest writes every hash it sends.
-#[must_use]
-pub fn hex(bytes: &[u8]) -> String {
-    bytes.iter().map(|byte| format!("{byte:02x}")).collect()
 }
 
 /// Sixteen bytes no two enrolments share: the clock, a counter, the name,
@@ -313,7 +308,7 @@ impl CredentialStore {
     /// `SHA-256(username:realm:password)`. The MD5 one is the `digest`
     /// verifier's to compute, since MD5 is not this capability's dependency.
     pub fn insert_sha256_ha1(&mut self, username: &str, realm: &str, password: &str) {
-        let ha1 = hex(&sha256(format!("{username}:{realm}:{password}").as_bytes()));
+        let ha1 = hex::encode(&sha256(format!("{username}:{realm}:{password}").as_bytes()));
         self.insert_ha1(username, realm, SHA_256, &ha1);
     }
 
@@ -341,11 +336,11 @@ mod tests {
         // The widely reproduced vector for ("password", "salt", 4096).
         let derived = pbkdf2_sha256(b"password", b"salt", 4096);
         assert_eq!(
-            hex(&derived),
+            hex::encode(&derived),
             "c5e478d59288c841aa530db6845c4c8d962893a001ce4e11a4963873aa98134a"
         );
         assert_eq!(
-            hex(&pbkdf2_sha256(b"password", b"salt", 1)),
+            hex::encode(&pbkdf2_sha256(b"password", b"salt", 1)),
             "120fb6cffcf8b32c43e7225256c4f837a86548c92ccc35480805987cb70be17b"
         );
     }
@@ -425,7 +420,7 @@ mod tests {
         store.insert_ha1("alice", "xmip", MD5, "0A1B2C");
         assert_eq!(
             store.ha1("alice", "xmip", SHA_256),
-            Some(hex(&sha256(b"alice:xmip:pencil")).as_str())
+            Some(hex::encode(&sha256(b"alice:xmip:pencil")).as_str())
         );
         assert_eq!(store.ha1("alice", "xmip", MD5), Some("0a1b2c"));
         assert_eq!(store.ha1("alice", "other", SHA_256), None);

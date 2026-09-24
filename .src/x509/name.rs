@@ -148,7 +148,7 @@ impl Name {
             .flat_map(|rdn| rdn.iter())
             .map(|attribute| {
                 let value = attribute.as_str().map_or_else(
-                    |_| format!("#{}", hex(attribute.attr_value().data)),
+                    |_| format!("#{}", codec::hex::encode(attribute.attr_value().data)),
                     ToString::to_string,
                 );
                 (short(&attribute.attr_type().to_id_string()), value)
@@ -247,10 +247,6 @@ fn short(kind: &str) -> String {
         other => return other.to_uppercase(),
     }
     .to_string()
-}
-
-fn hex(bytes: &[u8]) -> String {
-    bytes.iter().map(|byte| format!("{byte:02x}")).collect()
 }
 
 #[cfg(test)]

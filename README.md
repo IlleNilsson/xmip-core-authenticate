@@ -14,6 +14,21 @@ technology under this repository one mechanism at this gate; identity per
 technology, against the standards, is `doc/identity-by-technology.md` beside
 this file. `architecture.toml` names the technologies.
 
+## The clock
+
+`authenticate::clock` is the one time every verifier reads and the one window
+it holds a credential to: `[not_before, not_on_or_after)`, as RFC 7519 and
+SAML Core say, widened by a leeway at both ends. Ten technologies carried
+their own `now()` and their own reading of the bound until 2026-09-24.
+
+## JOSE keys, behind a feature
+
+`jwt` and `oidc` verify a JWS with the same keys. The `jose` feature turns on
+`authenticate::jose`: HS256, RS256 and ES256 keys, a key set read from a JSON
+Web Key Set document, and one rule for choosing a key — the one the token
+names, which must serve its algorithm, or every key of the algorithm where it
+names none.
+
 ## X.509, behind a feature
 
 What `certificate` and `mutual-tls` both need lives here (ADR-0044) and off
