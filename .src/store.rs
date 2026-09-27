@@ -21,13 +21,10 @@
 //! needs the same primitives to compute a client signature, and a test needs
 //! them to play the client.
 
-use codec::hex;
+use codec::{constant_time, hex, random};
 use hmac::{Hmac, Mac};
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
-use std::hash::{BuildHasher, RandomState};
-use std::sync::atomic::{AtomicU64, Ordering};
-use std::time::{SystemTime, UNIX_EPOCH};
 
 /// The iteration count a store derives with unless configured otherwise.
 /// OWASP's 2023 figure for PBKDF2-HMAC-SHA256; a test uses far fewer.
@@ -35,6 +32,10 @@ pub const DEFAULT_ITERATIONS: u32 = 600_000;
 
 /// The width of every key and hash here: SHA-256's.
 pub const KEY_LENGTH: usize = 32;
+
+/// The width of an enrolment's salt, drawn from the operating system's
+/// random source: 128 bits, as RFC 8018 section 4.1 asks at least 64.
+pub const SALT_LENGTH: usize = 16;
 
 /// The `HA1` algorithm names RFC 7616 spells, as [`CredentialStore::ha1`]
 /// takes them.
@@ -70,40 +71,6 @@ pub fn pbkdf2_sha256(password: &[u8], salt: &[u8], iterations: u32) -> [u8; KEY_
         }
     }
     derived
-}
-
-/// Whether two byte strings are equal, in time that depends on their length
-/// and never on where they differ.
-#[must_use]
-pub fn constant_time_eq(left: &[u8], right: &[u8]) -> bool {
-    if left.len() != right.len() {
-        return false;
-    }
-    let difference = left
-        .iter()
-        .zip(right)
-        .fold(0u8, |acc, (a, b)| acc | (a ^ b));
-    core::hint::black_box(difference) == 0
-}
-
-/// Sixteen bytes no two enrolments share: the clock, a counter, the name,
-/// and a hash keyed at random by the process, all through SHA-256.
-#[must_use]
-pub fn fresh_salt(username: &str) -> [u8; 16] {
-    static ENROLMENTS: AtomicU64 = AtomicU64::new(1);
-    let nanos = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map_or(0, |since| since.as_nanos());
-    let count = ENROLMENTS.fetch_add(1, Ordering::Relaxed);
-    let keyed = RandomState::new().hash_one(username);
-    let mut seed = Vec::with_capacity(32 + username.len());
-    seed.extend_from_slice(&nanos.to_le_bytes());
-    seed.extend_from_slice(&count.to_le_bytes());
-    seed.extend_from_slice(&keyed.to_le_bytes());
-    seed.extend_from_slice(username.as_bytes());
-    let mut salt = [0u8; 16];
-    salt.copy_from_slice(&sha256(&seed)[..16]);
-    salt
 }
 
 /// What the store holds for one username: RFC 5802 section 3's four values.
@@ -175,14 +142,14 @@ impl Verifier {
     pub fn matches(&self, password: &str) -> bool {
         let salted = pbkdf2_sha256(password.as_bytes(), &self.salt, self.iterations);
         let client_key = hmac_sha256(&salted, b"Client Key");
-        constant_time_eq(&sha256(&client_key), &self.stored_key)
+        constant_time::equal(&sha256(&client_key), &self.stored_key)
     }
 
     /// Whether `client_key` — recovered from a SCRAM `ClientProof` — is the
     /// one behind the `StoredKey`.
     #[must_use]
     pub fn proves(&self, client_key: &[u8]) -> bool {
-        constant_time_eq(&sha256(client_key), &self.stored_key)
+        constant_time::equal(&sha256(client_key), &self.stored_key)
     }
 }
 
@@ -222,7 +189,7 @@ impl CredentialStore {
             iterations,
             verifiers: HashMap::new(),
             ha1: HashMap::new(),
-            decoy: Verifier::derive("", &fresh_salt(""), iterations),
+            decoy: Verifier::derive("", &random::array::<SALT_LENGTH>(), iterations),
         }
     }
 
@@ -249,7 +216,7 @@ impl CredentialStore {
     /// Enrol a password under a fresh salt. A second enrolment of the same
     /// name replaces the first.
     pub fn insert(&mut self, username: &str, password: &str) {
-        let salt = fresh_salt(username);
+        let salt = random::array::<SALT_LENGTH>();
         self.insert_verifier(username, Verifier::derive(password, &salt, self.iterations));
     }
 
@@ -425,13 +392,5 @@ mod tests {
         assert_eq!(store.ha1("alice", "xmip", MD5), Some("0a1b2c"));
         assert_eq!(store.ha1("alice", "other", SHA_256), None);
         assert_eq!(store.ha1("bob", "xmip", SHA_256), None);
-    }
-
-    #[test]
-    fn a_constant_time_compare_is_still_a_compare() {
-        assert!(constant_time_eq(b"abc", b"abc"));
-        assert!(!constant_time_eq(b"abc", b"abd"));
-        assert!(!constant_time_eq(b"abc", b"ab"));
-        assert!(constant_time_eq(b"", b""));
     }
 }
