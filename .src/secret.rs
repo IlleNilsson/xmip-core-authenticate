@@ -13,8 +13,10 @@
 //! [`crate::store`] instead. A lookup compares the presented hash with every
 //! secret it considers, each in constant time and with no early exit.
 
+use codec::constant_time;
+
 use crate::clock::Window;
-use crate::store::{KEY_LENGTH, constant_time_eq, sha256};
+use crate::store::{KEY_LENGTH, sha256};
 
 /// One secret as the store holds it.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -117,7 +119,7 @@ impl SecretStore {
             .iter()
             .filter(|secret| considered(secret))
             .fold(None, |found, secret| {
-                if constant_time_eq(&secret.hash, hash) {
+                if constant_time::equal(&secret.hash, hash) {
                     found.or(Some(secret))
                 } else {
                     found
