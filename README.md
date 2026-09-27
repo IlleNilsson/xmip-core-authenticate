@@ -19,7 +19,20 @@ this file. `architecture.toml` names the technologies.
 `authenticate::clock` is the one time every verifier reads and the one window
 it holds a credential to: `[not_before, not_on_or_after)`, as RFC 7519 and
 SAML Core say, widened by a leeway at both ends. Ten technologies carried
-their own `now()` and their own reading of the bound until 2026-09-24.
+their own `now()` and their own reading of the bound until 2026-09-24. The
+time is the estate's one clock, `xcore::SystemClock`, read in the seconds a
+credential's window counts.
+
+## The gate dispatches, the verifier verifies
+
+The gate hands a claim to the authenticator whose mechanism has the claim's
+name, and to no other; a verifier does not ask again which mechanism it was
+handed. The verifiers of a user's password — `basic`, `digest`, `ldap`,
+`pam`, `password`, `scram`, `windows` — read a claim filed under their own
+name or a bare user name filed under `xcore::mechanism::USERNAME`, through
+`authenticate::account::user_claim`; and `account::same_account` is the one
+refusal of a claim whose `principal.user` evidence names another account
+than the one the verifier read.
 
 ## The stores
 

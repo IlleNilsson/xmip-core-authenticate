@@ -24,6 +24,7 @@
 //! before checking who the caller was. Authentication verifies the presented
 //! credential and *resolves it to* a Party, per ADR-0019 clause 4.
 
+pub mod account;
 pub mod clock;
 pub mod conclusion;
 pub mod secret;
