@@ -67,3 +67,6 @@ jose = ["dep:rsa", "dep:p256", "dep:serde_json"]
 xmip-core-authenticate = { path = ".", features = ["mint", "x509-alt", "jose"] }
 # The jose tests publish keys as an issuer would: rand for a key to sign with.
 rand = "0.8"
+
+[profile.dev.package."*"]
+opt-level = 3
