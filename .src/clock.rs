@@ -16,7 +16,8 @@
 //! window at both ends: how far another clock may be off from this one.
 
 use std::fmt;
-use std::time::SystemTime;
+
+use xcore::{Clock as _, SystemClock};
 
 /// Where the time comes from and how far another clock may be off.
 pub struct Clock {
@@ -97,10 +98,11 @@ impl fmt::Debug for Clock {
     }
 }
 
-/// Seconds since the Unix epoch, now, by the system clock.
+/// Seconds since the Unix epoch, now: the estate's one clock, read in the
+/// unit a credential's window counts.
 #[must_use]
 pub fn now() -> i64 {
-    codec::civil::unix_seconds(SystemTime::now())
+    SystemClock.unix_seconds()
 }
 
 /// When a credential is valid: from `not_before`, until `not_on_or_after`.
