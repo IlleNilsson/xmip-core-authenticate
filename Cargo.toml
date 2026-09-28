@@ -27,8 +27,8 @@ ntlm = { package = "xmip-core-library-ntlm", git = "https://github.com/IlleNilss
 # The credential store (ADR-0050 section 6): PBKDF2-HMAC-SHA256 verifiers
 # that password, basic, digest and scram share. Pure Rust, no unsafe, the
 # same two crates transport-http already takes for SigV4.
-sha2 = "0.10"
-hmac = "0.12"
+sha2 = "0.11"
+hmac = "0.13"
 
 # X.509, shared by `certificate` and `mutual-tls` (ADR-0044) and off unless a
 # technology asks for it, so the sixteen that do not never carry a chain
