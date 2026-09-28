@@ -14,7 +14,7 @@
 //! publishes it. Off unless a technology turns the `jose` feature on.
 
 use crate::AuthenticateError;
-use hmac::{Hmac, Mac};
+use hmac::{Hmac, KeyInit, Mac};
 use rsa::pkcs8::DecodePublicKey;
 use rsa::signature::Verifier as _;
 use serde_json::Value;
@@ -187,7 +187,7 @@ impl Key {
                 })
             }
             Material::Rsa(key) => {
-                let key = rsa::pkcs1v15::VerifyingKey::<Sha256>::new(key.clone());
+                let key = rsa::pkcs1v15::VerifyingKey::<rsa::sha2::Sha256>::new(key.clone());
                 rsa::pkcs1v15::Signature::try_from(signature)
                     .is_ok_and(|signature| key.verify(input, &signature).is_ok())
             }

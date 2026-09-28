@@ -177,41 +177,14 @@ impl fmt::Display for Name {
 /// Microsoft's object identifier for a user principal name in an otherName.
 const UPN: &str = "1.3.6.1.4.1.311.20.2.3";
 
-/// The text of an otherName value: `[0] EXPLICIT UTF8String`, read without a
-/// DER library because it is two headers and a string.
+/// The text of an otherName value: `[0] EXPLICIT UTF8String`, two headers
+/// and a string read by the estate's X.690 reader (`xmip-core-library-asn1`),
+/// which this file read again, two length bytes at most, until 2026-09-28.
 fn utf8_within(value: &[u8]) -> Option<String> {
-    let inner = contents(value, 0xA0)?;
-    let text = contents(inner, 0x0C)?;
+    let (inner, _) = asn1::expect(value, 0xA0).ok()?;
+    let (text, _) = asn1::expect(inner, 0x0C).ok()?;
 
     String::from_utf8(text.to_vec()).ok()
-}
-
-/// The contents of one DER element with the tag expected, short or long
-/// length, where the bytes hold all of it.
-fn contents(bytes: &[u8], tag: u8) -> Option<&[u8]> {
-    let (&found, rest) = bytes.split_first()?;
-    let (&first, rest) = rest.split_first()?;
-
-    if found != tag {
-        return None;
-    }
-
-    let (length, rest) = if first < 0x80 {
-        (usize::from(first), rest)
-    } else {
-        let count = usize::from(first & 0x7F);
-
-        if count == 0 || count > 2 || rest.len() < count {
-            return None;
-        }
-
-        let length = rest[..count]
-            .iter()
-            .fold(0usize, |length, &byte| (length << 8) | usize::from(byte));
-        (length, &rest[count..])
-    };
-
-    rest.get(..length)
 }
 
 fn push(attributes: &mut Vec<(String, String)>, part: &str) {
