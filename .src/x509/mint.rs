@@ -41,7 +41,7 @@ pub struct Issued {
 }
 
 impl Authority {
-    /// A self-signed root named `name`, `O=Partner X`.
+    /// A self-signed root named `name`, `O=Party X`.
     ///
     /// # Panics
     ///
@@ -92,7 +92,7 @@ impl Authority {
         }
     }
 
-    /// A leaf for a client, `CN=<common_name>,O=Partner X`, with the common
+    /// A leaf for a client, `CN=<common_name>,O=Party X`, with the common
     /// name as its one DNS name, valid between the two instants in seconds
     /// since the Unix epoch.
     ///
@@ -336,7 +336,7 @@ fn authority_params(name: &str) -> CertificateParams {
     params.distinguished_name.push(DnType::CommonName, name);
     params
         .distinguished_name
-        .push(DnType::OrganizationName, "Partner X");
+        .push(DnType::OrganizationName, "Party X");
     params.is_ca = IsCa::Ca(BasicConstraints::Unconstrained);
     params.key_usages = vec![KeyUsagePurpose::KeyCertSign, KeyUsagePurpose::CrlSign];
     params.serial_number = Some(fresh_serial());
@@ -350,7 +350,7 @@ fn leaf_params(common_name: &str, not_before: i64, not_after: i64) -> Certificat
         .push(DnType::CommonName, common_name);
     params
         .distinguished_name
-        .push(DnType::OrganizationName, "Partner X");
+        .push(DnType::OrganizationName, "Party X");
     params.not_before = instant(not_before);
     params.not_after = instant(not_after);
     params.serial_number = Some(fresh_serial());

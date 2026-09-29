@@ -136,9 +136,9 @@ mod tests {
     fn a_secret_is_found_by_its_hash_and_the_secret_itself_is_not_kept() {
         let mut store = SecretStore::new();
         assert!(store.is_empty());
-        store.insert("partner-x", "mF_9.B5f-4.1JqM", Some(42));
+        store.insert("party-x", "mF_9.B5f-4.1JqM", Some(42));
         let held = store.holding(&sha256(b"mF_9.B5f-4.1JqM")).expect("held");
-        assert_eq!(held.name(), "partner-x");
+        assert_eq!(held.name(), "party-x");
         assert_eq!(held.expiry(), Some(42));
         assert_eq!(held.window(), Window::until(Some(42)));
         assert_eq!(held.hash(), &sha256(b"mF_9.B5f-4.1JqM"));
@@ -149,10 +149,10 @@ mod tests {
     #[test]
     fn a_secret_hashed_elsewhere_is_found_and_another_is_not() {
         let mut store = SecretStore::new();
-        store.insert_hash("partner-y", sha256(b"opaque"), None);
+        store.insert_hash("party-y", sha256(b"opaque"), None);
         assert_eq!(
             store.holding(&sha256(b"opaque")).map(Secret::name),
-            Some("partner-y")
+            Some("party-y")
         );
         assert!(store.holding(&sha256(b"opaque ")).is_none());
     }
@@ -160,21 +160,21 @@ mod tests {
     #[test]
     fn only_what_the_caller_considers_is_compared_and_a_rotation_stands_beside() {
         let mut store = SecretStore::new();
-        store.insert("partner-x", "old", Some(100));
-        store.insert("partner-x", "new", None);
-        store.insert("partner-y", "key-y", None);
+        store.insert("party-x", "old", Some(100));
+        store.insert("party-x", "new", None);
+        store.insert("party-y", "key-y", None);
         let named = |name: &'static str| move |secret: &Secret| secret.name() == name;
 
         assert_eq!(
             store
                 .iter()
-                .filter(|secret| named("partner-x")(secret))
+                .filter(|secret| named("party-x")(secret))
                 .count(),
             2
         );
         let expiry = |key: &[u8]| {
             store
-                .holding_where(&sha256(key), named("partner-x"))
+                .holding_where(&sha256(key), named("party-x"))
                 .map(Secret::expiry)
         };
         assert_eq!(expiry(b"old"), Some(Some(100)));

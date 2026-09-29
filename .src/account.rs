@@ -77,9 +77,9 @@ mod tests {
 
     #[test]
     fn evidence_naming_another_account_is_refused_and_any_spelling_of_the_same_is_not() {
-        let read = UserPrincipalName::parse("jane@partnerx").expect("a principal");
-        let same = claim("jane").with_evidence(PRINCIPAL_USER, "PARTNERX\\jane");
-        let other = claim("jane").with_evidence(PRINCIPAL_USER, "mallory@partnerx");
+        let read = UserPrincipalName::parse("jane@partyx").expect("a principal");
+        let same = claim("jane").with_evidence(PRINCIPAL_USER, "PARTYX\\jane");
+        let other = claim("jane").with_evidence(PRINCIPAL_USER, "mallory@partyx");
         assert!(same_account(&same, &read).is_ok());
         assert!(same_account(&claim("jane"), &read).is_ok());
         let refused = same_account(&other, &read).expect_err("another account");

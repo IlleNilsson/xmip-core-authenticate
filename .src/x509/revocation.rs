@@ -94,9 +94,9 @@ mod tests {
 
     #[test]
     fn a_revoked_certificate_is_refused_and_its_neighbour_is_not() {
-        let root = Authority::root("Partner Root");
-        let revoked = root.issue("partner-x.example", NOW - DAY, NOW + DAY);
-        let fine = root.issue("partner-y.example", NOW - DAY, NOW + DAY);
+        let root = Authority::root("Party Root");
+        let revoked = root.issue("party-x.example", NOW - DAY, NOW + DAY);
+        let fine = root.issue("party-y.example", NOW - DAY, NOW + DAY);
         let lists = Revocation::from_pem(&root.crl(&[&revoked], NOW)).expect("a list");
         let anchors = Anchors::from_pem(&root.pem()).expect("anchors");
 
@@ -122,9 +122,9 @@ mod tests {
 
     #[test]
     fn an_issuer_with_no_list_held_is_of_unknown_status_and_refused() {
-        let root = Authority::root("Partner Root");
+        let root = Authority::root("Party Root");
         let other = Authority::root("Other Root");
-        let issued = root.issue("partner-x.example", NOW - DAY, NOW + DAY);
+        let issued = root.issue("party-x.example", NOW - DAY, NOW + DAY);
         let lists = Revocation::from_pem(&other.crl(&[], NOW)).expect("a list");
         let anchors = Anchors::from_pem(&root.pem()).expect("anchors");
 

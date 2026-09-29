@@ -340,7 +340,7 @@ mod tests {
             PartyId::new(1),
             "mutual-tls",
             Purpose::Receive,
-            "CN=partner-x.example",
+            "CN=party-x.example",
         )])
     }
 
@@ -401,7 +401,7 @@ mod tests {
             &Acceptance::closed().accepting(&mechanism::mutual_tls()),
             &[&tls_proves()],
             &registry(),
-            &Presented::passed(mechanism::mutual_tls(), "CN=partner-x.example"),
+            &Presented::passed(mechanism::mutual_tls(), "CN=party-x.example"),
         )
         .expect("accepted");
 
@@ -439,7 +439,7 @@ mod tests {
             &Acceptance::closed(),
             &[&tls_proves()],
             &registry(),
-            &Presented::passed(mechanism::mutual_tls(), "CN=partner-x.example"),
+            &Presented::passed(mechanism::mutual_tls(), "CN=party-x.example"),
         )
         .expect_err("refused");
 
@@ -471,7 +471,7 @@ mod tests {
                 .from_party(PartyId::new(99)),
             &[&tls_proves()],
             &registry(),
-            &Presented::passed(mechanism::mutual_tls(), "CN=partner-x.example"),
+            &Presented::passed(mechanism::mutual_tls(), "CN=party-x.example"),
         )
         .expect_err("refused");
 
@@ -524,7 +524,7 @@ mod tests {
             &Acceptance::closed().accepting(&mechanism::edi_x12_interchange()),
             &[&Always(mechanism::edi_x12_interchange(), Verified::Claimed)],
             &registry(),
-            &Presented::detected(mechanism::edi_x12_interchange(), "ISA06=PARTNERX"),
+            &Presented::detected(mechanism::edi_x12_interchange(), "ISA06=PARTYX"),
         )
         .expect("accepted");
 
@@ -537,7 +537,7 @@ mod tests {
             &Acceptance::closed().accepting(&mechanism::mutual_tls()),
             &[&tls_proves()],
             &registry(),
-            &Presented::passed(mechanism::mutual_tls(), "CN=partner-x.example")
+            &Presented::passed(mechanism::mutual_tls(), "CN=party-x.example")
                 .with_evidence("issuer", "CN=Example CA")
                 .with_evidence("source", "203.0.113.7"),
         )

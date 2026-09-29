@@ -32,7 +32,7 @@ pub enum Hybrid {
     Ignored,
     /// A certificate that carries the extensions is verified by them; one
     /// that does not is taken on its classical signature alone. The
-    /// migration's middle: a partner may move before the node requires it.
+    /// migration's middle: a Party may move before the node requires it.
     #[default]
     WherePresent,
     /// Every certificate on the path, the anchor included, carries a valid
@@ -229,7 +229,7 @@ mod tests {
     const DAY: i64 = 86_400;
 
     fn path(root: &Authority, issuer: &Authority) -> (Path, Chain) {
-        let issued = issuer.issue("partner-x.example", NOW - DAY, NOW + DAY);
+        let issued = issuer.issue("party-x.example", NOW - DAY, NOW + DAY);
         let chain = Chain::from_pem(&issued.pem).expect("a chain");
         let anchors = Anchors::from_pem(&root.pem()).expect("anchors");
         let path = verify(&chain, &anchors, Usage::ClientAuth, None, NOW).expect("classical");
@@ -238,8 +238,8 @@ mod tests {
 
     #[test]
     fn a_hybrid_path_verifies_under_every_policy_and_a_legacy_verifier_sees_a_certificate() {
-        let root = Authority::hybrid_root("Partner Root");
-        let issuing = root.hybrid_intermediate("Partner Issuing CA");
+        let root = Authority::hybrid_root("Party Root");
+        let issuing = root.hybrid_intermediate("Party Issuing CA");
         let (path, chain) = path(&root, &issuing);
 
         assert!(is_hybrid(&chain).expect("read"));
@@ -251,7 +251,7 @@ mod tests {
 
     #[test]
     fn a_classical_path_passes_where_present_and_is_refused_where_required() {
-        let root = Authority::root("Partner Root");
+        let root = Authority::root("Party Root");
         let (path, chain) = path(&root, &root);
 
         assert!(!is_hybrid(&chain).expect("read"));
@@ -262,9 +262,9 @@ mod tests {
 
     #[test]
     fn an_alternative_signature_by_the_wrong_key_is_refused_naming_the_algorithm() {
-        let root = Authority::hybrid_root("Partner Root");
+        let root = Authority::hybrid_root("Party Root");
         let stranger = Authority::hybrid_root("Somebody Else");
-        let issued = root.issue_alt_signed_by(&stranger, "partner-x.example", NOW - DAY, NOW + DAY);
+        let issued = root.issue_alt_signed_by(&stranger, "party-x.example", NOW - DAY, NOW + DAY);
         let chain = Chain::from_pem(&issued.pem).expect("a chain");
         let anchors = Anchors::from_pem(&root.pem()).expect("anchors");
         let path = verify(&chain, &anchors, Usage::ClientAuth, None, NOW).expect("classical");
