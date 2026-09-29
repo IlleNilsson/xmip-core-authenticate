@@ -272,9 +272,9 @@ mod tests {
 
     #[test]
     fn a_chain_to_a_held_anchor_verifies_and_the_fingerprint_is_the_leafs() {
-        let root = Authority::root("Partner Root");
-        let issuing = root.intermediate("Partner Issuing CA");
-        let issued = issuing.issue("partner-x.example", NOW - DAY, NOW + DAY);
+        let root = Authority::root("Party Root");
+        let issuing = root.intermediate("Party Issuing CA");
+        let issued = issuing.issue("party-x.example", NOW - DAY, NOW + DAY);
         let chain = Chain::from_pem(&issued.pem).expect("a chain");
         let anchors = Anchors::from_pem(&root.pem()).expect("anchors");
 
@@ -291,9 +291,9 @@ mod tests {
 
     #[test]
     fn a_chain_to_an_anchor_the_node_does_not_hold_is_refused_saying_so() {
-        let root = Authority::root("Partner Root");
+        let root = Authority::root("Party Root");
         let stranger = Authority::root("Somebody Else");
-        let issued = root.issue("partner-x.example", NOW - DAY, NOW + DAY);
+        let issued = root.issue("party-x.example", NOW - DAY, NOW + DAY);
         let chain = Chain::from_pem(&issued.pem).expect("a chain");
         let anchors = Anchors::from_pem(&stranger.pem()).expect("anchors");
 
@@ -303,8 +303,8 @@ mod tests {
 
     #[test]
     fn an_expired_certificate_is_refused_by_the_clock_it_is_given() {
-        let root = Authority::root("Partner Root");
-        let issued = root.issue("partner-x.example", NOW - 2 * DAY, NOW - DAY);
+        let root = Authority::root("Party Root");
+        let issued = root.issue("party-x.example", NOW - 2 * DAY, NOW - DAY);
         let chain = Chain::from_pem(&issued.pem).expect("a chain");
         let anchors = Anchors::from_pem(&root.pem()).expect("anchors");
 
@@ -315,8 +315,8 @@ mod tests {
 
     #[test]
     fn no_anchor_held_is_said_before_any_chain_is_read() {
-        let root = Authority::root("Partner Root");
-        let issued = root.issue("partner-x.example", NOW - DAY, NOW + DAY);
+        let root = Authority::root("Party Root");
+        let issued = root.issue("party-x.example", NOW - DAY, NOW + DAY);
         let chain = Chain::from_pem(&issued.pem).expect("a chain");
 
         let failure =

@@ -224,7 +224,7 @@ needs it: the transport certificate names the VAN, `ISA06` names the
 counterparty, and both are true.
 
 ```toml
-[receive.location.partner-x.identity]
+[receive.location.party-x.identity]
 alignment      = "none"      # none | relaxed | strict
 onMisalignment = "accept"    # accept | quarantine | reject
 ```

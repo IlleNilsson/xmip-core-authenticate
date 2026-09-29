@@ -2,7 +2,7 @@
 //! names what was claimed.
 //!
 //! The first gate presents the subject the transport reported —
-//! `CN=partner-x.example,O=Partner X` — and the second gate must find the
+//! `CN=party-x.example,O=Party X` — and the second gate must find the
 //! same name in the leaf it verified. Two writers render one name two ways:
 //! RFC 4514 reverses the order and OpenSSL keeps it, one puts a space after
 //! the comma and the other does not. So a name here is its attributes, and
@@ -231,36 +231,36 @@ mod tests {
 
     #[test]
     fn the_same_attributes_in_either_order_and_spacing_are_one_name() {
-        let ours = Name::parse("CN=partner-x.example,O=Partner X");
-        let theirs = Name::parse("O = Partner X, cn = partner-x.example");
+        let ours = Name::parse("CN=party-x.example,O=Party X");
+        let theirs = Name::parse("O = Party X, cn = party-x.example");
 
         assert_eq!(ours, theirs);
-        assert_eq!(ours.to_string(), "CN=partner-x.example,O=Partner X");
+        assert_eq!(ours.to_string(), "CN=party-x.example,O=Party X");
     }
 
     #[test]
     fn a_comma_in_a_value_is_escaped_and_survives() {
-        let name = Name::parse("CN=Partner\\, Inc,O=Partner X");
+        let name = Name::parse("CN=Party\\, Inc,O=Party X");
 
-        assert_eq!(name.to_string(), "CN=Partner\\, Inc,O=Partner X");
-        assert_ne!(name, Name::parse("CN=Partner,O=Partner X"));
+        assert_eq!(name.to_string(), "CN=Party\\, Inc,O=Party X");
+        assert_ne!(name, Name::parse("CN=Party,O=Party X"));
     }
 
     #[test]
     fn a_smart_card_certificate_names_its_user_in_either_spelling() {
-        let root = Authority::root("Partner Root");
-        let issued = root.issue_for_user("jane", "Jane@Partner-X.Example", NOW - 10, NOW + 10);
+        let root = Authority::root("Party Root");
+        let issued = root.issue_for_user("jane", "Jane@Party-X.Example", NOW - 10, NOW + 10);
         let chain = super::super::Chain::from_pem(&issued.pem).expect("a chain");
 
         let carried = Name::user_principal_of(chain.leaf())
             .expect("read")
             .expect("a user principal name");
-        assert_eq!(carried.to_string(), "Jane@partner-x.example");
-        assert!(Name::names(chain.leaf(), "jane@partner-x.example").expect("read"));
-        assert!(Name::names(chain.leaf(), "PARTNER-X.EXAMPLE\\JANE").expect("read"));
-        assert!(!Name::names(chain.leaf(), "john@partner-x.example").expect("read"));
+        assert_eq!(carried.to_string(), "Jane@party-x.example");
+        assert!(Name::names(chain.leaf(), "jane@party-x.example").expect("read"));
+        assert!(Name::names(chain.leaf(), "PARTY-X.EXAMPLE\\JANE").expect("read"));
+        assert!(!Name::names(chain.leaf(), "john@party-x.example").expect("read"));
 
-        let plain = root.issue("partner-x.example", NOW - 10, NOW + 10);
+        let plain = root.issue("party-x.example", NOW - 10, NOW + 10);
         let chain = super::super::Chain::from_pem(&plain.pem).expect("a chain");
         assert!(
             Name::user_principal_of(chain.leaf())
@@ -271,18 +271,18 @@ mod tests {
 
     #[test]
     fn a_certificate_names_its_subject_and_its_dns_names_and_nothing_else() {
-        let root = Authority::root("Partner Root");
-        let issued = root.issue("partner-x.example", NOW - 10, NOW + 10);
+        let root = Authority::root("Party Root");
+        let issued = root.issue("party-x.example", NOW - 10, NOW + 10);
         let chain = super::super::Chain::from_pem(&issued.pem).expect("a chain");
 
         assert_eq!(
             Name::subject_of(chain.leaf())
                 .expect("a subject")
                 .to_string(),
-            "CN=partner-x.example,O=Partner X"
+            "CN=party-x.example,O=Party X"
         );
-        assert!(Name::names(chain.leaf(), "O=Partner X,CN=partner-x.example").expect("read"));
-        assert!(Name::names(chain.leaf(), "PARTNER-X.example").expect("read"));
-        assert!(!Name::names(chain.leaf(), "CN=partner-y.example").expect("read"));
+        assert!(Name::names(chain.leaf(), "O=Party X,CN=party-x.example").expect("read"));
+        assert!(Name::names(chain.leaf(), "PARTY-X.example").expect("read"));
+        assert!(!Name::names(chain.leaf(), "CN=party-y.example").expect("read"));
     }
 }
