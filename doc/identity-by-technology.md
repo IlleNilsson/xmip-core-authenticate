@@ -119,8 +119,7 @@ a distinction that matters when a Journey spans several calls.
 | --- | --- | --- | --- |
 | `mssql` | TDS encryption | Windows integrated, Kerberos, SQL login, Entra ID | MS-TDS |
 | `postgresql` | TLS | SCRAM-SHA-256, GSSAPI, certificate, LDAP | RFC 5802 |
-| `mysql` | TLS | `caching_sha2_password`, certificate, PAM | MySQL protocol |
-| `oracle` | Native encryption, TLS | operating system, Kerberos, wallet | Oracle Net |
+| `mariadb` | TLS | `ed25519`, certificate, PAM | MariaDB protocol |
 | `sqlite` | none — it is a file | none | filesystem permissions |
 
 `sqlite` belongs with `file`. There is no channel and no credential because
