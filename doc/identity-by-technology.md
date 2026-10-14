@@ -120,6 +120,8 @@ a distinction that matters when a Journey spans several calls.
 | `mssql` | TDS encryption | Windows integrated, Kerberos, SQL login, Entra ID | MS-TDS |
 | `postgresql` | TLS | SCRAM-SHA-256, GSSAPI, certificate, LDAP | RFC 5802 |
 | `mariadb` | TLS | `ed25519`, certificate, PAM | MariaDB protocol |
+| `oracle` | TCPS (TLS), native network encryption | O5LOGON password (11g or 12c verifier), Kerberos, RADIUS, certificate | Oracle Net (TNS, TTC) |
+| `db2` | TLS on the server's TLS port | user ID and password (security mechanism 3, under TLS); DRDA's encrypted mechanisms rest on anonymous Diffie-Hellman and are not spoken | The Open Group DRDA |
 | `sqlite` | none — it is a file | none | filesystem permissions |
 
 `sqlite` belongs with `file`. There is no channel and no credential because
