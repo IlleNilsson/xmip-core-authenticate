@@ -68,7 +68,10 @@ mod tests {
 
     #[test]
     fn a_verdict_alone_learned_nothing_and_a_learned_pair_is_found_by_name() {
-        assert!(Conclusion::from(Verified::Claimed).learned.is_empty());
+        assert_eq!(
+            Conclusion::from(Verified::Claimed).learned,
+            [] as [(String, String); 0]
+        );
 
         let conclusion = Conclusion::proven().learning("principal.user", "jane@corp.example");
         assert_eq!(conclusion.verified, Verified::Proven);
