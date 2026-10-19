@@ -80,12 +80,20 @@ impl Acceptance {
         self
     }
 
-    /// Narrow to named Parties. Left empty, any Party the registry resolves is
-    /// accepted.
+    /// Narrow to named Parties: a verified identity that resolves to another
+    /// Party, or to none, is refused (ADR-0019 clause 1: the closed set is
+    /// of identities and mechanisms both). Left empty, any identity the
+    /// mechanisms verify is accepted, resolved to a Party or not.
     #[must_use]
     pub fn from_party(mut self, party_id: PartyId) -> Self {
         self.parties.push(party_id);
         self
+    }
+
+    /// Whether the location takes named Parties only.
+    #[must_use]
+    pub fn names_parties(&self) -> bool {
+        !self.parties.is_empty()
     }
 
     #[must_use]
@@ -122,6 +130,9 @@ pub enum Refusal {
     NotProven { mechanism: String, detail: String },
     /// Verified, and resolved to a Party this location does not take.
     PartyNotPermitted { party_id: PartyId },
+    /// Verified, at a location that takes named Parties only, and resolved
+    /// to no Party at all.
+    NoParty { mechanism: String },
 }
 
 impl fmt::Display for Refusal {
@@ -144,6 +155,11 @@ impl fmt::Display for Refusal {
                     "resolved to {party_id}, which this location does not take"
                 )
             }
+            Self::NoParty { mechanism } => write!(
+                f,
+                "the '{mechanism}' identity resolved to no Party, and this location takes \
+                 named Parties only"
+            ),
         }
     }
 }
@@ -292,16 +308,21 @@ pub fn authenticate(
 
     // The lookup happens after verification, never before. Resolving first
     // would leak which values are known to an unauthenticated caller.
-    if let Some(party_id) = registry.resolve(
+    match registry.resolve(
         presented.mechanism.name(),
         Purpose::Receive,
         &presented.value,
     ) {
-        if !acceptance.permits(party_id) {
+        Some(party_id) if !acceptance.permits(party_id) => {
             return Err(Refusal::PartyNotPermitted { party_id });
         }
-
-        identity = identity.resolving_to(party_id);
+        Some(party_id) => identity = identity.resolving_to(party_id),
+        None if acceptance.names_parties() => {
+            return Err(Refusal::NoParty {
+                mechanism: presented.mechanism.name().to_string(),
+            });
+        }
+        None => {}
     }
 
     Ok(identity)
@@ -480,6 +501,34 @@ mod tests {
             Refusal::PartyNotPermitted {
                 party_id: PartyId::new(1)
             }
+        );
+    }
+
+    #[test]
+    fn a_location_naming_its_parties_refuses_an_identity_that_resolves_to_none() {
+        // ADR-0019 clause 1: the closed set is of identities as well as
+        // mechanisms. The same stranger a location naming no Party takes
+        // (above) is refused by one that names its Parties, after it was
+        // verified and never before.
+        let refusal = authenticate(
+            &Acceptance::closed()
+                .accepting(&mechanism::mutual_tls())
+                .from_party(PartyId::new(1)),
+            &[&tls_proves()],
+            &registry(),
+            &Presented::passed(mechanism::mutual_tls(), "CN=stranger.example"),
+        )
+        .expect_err("refused");
+
+        assert_eq!(
+            refusal,
+            Refusal::NoParty {
+                mechanism: "mutual-tls".to_string()
+            }
+        );
+        assert!(
+            refusal.to_string().contains("named Parties only"),
+            "{refusal}"
         );
     }
 
