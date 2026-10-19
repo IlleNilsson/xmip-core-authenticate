@@ -41,6 +41,11 @@ webpki = { package = "rustls-webpki", version = "0.103", features = ["ring"], op
 rustls-pki-types = { version = "1", optional = true }
 rustls-pemfile = { version = "2", optional = true }
 x509-parser = { version = "0.16", optional = true }
+# A distinguished name and a leaf's fingerprint, read once in the estate
+# where a transport that terminates TLS reads them (`tls::Name`,
+# `tls::peer::fingerprint`), so the name the gates compare is the name the
+# transport wrote.
+tls = { package = "xmip-core-library-tls", git = "https://github.com/IlleNilsson/xmip-core-library-tls", branch = "main", optional = true }
 rcgen = { version = "0.13", optional = true }
 time = { version = "0.3", optional = true }
 # The alternative, post-quantum signature a hybrid certificate carries
@@ -56,7 +61,7 @@ p256 = { version = "0.13", optional = true, features = ["ecdsa", "pem"] }
 serde_json = { version = "1", optional = true }
 
 [features]
-x509 = ["dep:webpki", "dep:rustls-pki-types", "dep:rustls-pemfile", "dep:x509-parser"]
+x509 = ["dep:webpki", "dep:rustls-pki-types", "dep:rustls-pemfile", "dep:x509-parser", "dep:tls"]
 x509-alt = ["x509", "dep:aws-lc-rs"]
 mint = ["x509", "dep:rcgen", "dep:time"]
 jose = ["dep:rsa", "dep:p256", "dep:serde_json"]

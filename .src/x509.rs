@@ -9,8 +9,11 @@
 //! a revocation list the node holds. Revocation is by CRL and offline
 //! (ADR-0045); asking an OCSP responder is online and waits for the switch.
 //!
-//! webpki walks the path and checks the signatures; it keeps names as DER,
-//! so [`Name`] reads the subject and the alternative names with x509-parser.
+//! webpki walks the path and checks the signatures; it keeps names as DER.
+//! A name, and a leaf's fingerprint, are read as the transport that reported
+//! them read them, by `xmip-core-library-tls` ([`Name`],
+//! `tls::peer::fingerprint`); the alternative names [`name`] reads with
+//! x509-parser.
 
 pub mod name;
 pub mod revocation;
@@ -23,12 +26,13 @@ pub mod der;
 #[cfg(feature = "mint")]
 pub mod mint;
 
-pub use name::Name;
 pub use revocation::Revocation;
+/// A distinguished name, as the transport wrote the subject and issuer it
+/// reported: what the gates compare a claim and an issuer with.
+pub use tls::Name;
 
 use crate::AuthenticateError;
 use rustls_pki_types::{CertificateDer, UnixTime};
-use sha2::{Digest, Sha256};
 use std::time::Duration;
 use webpki::{EndEntityCert, ExtendedKeyUsageValidator, KeyPurposeIdIter, KeyUsage};
 
@@ -73,8 +77,7 @@ impl Chain {
     /// the transport reports it beside the subject.
     #[must_use]
     pub fn fingerprint(&self) -> String {
-        let digest = Sha256::digest(self.leaf().as_ref());
-        format!("SHA256:{}", codec::hex::encode(&digest))
+        tls::peer::fingerprint(self.leaf())
     }
 }
 

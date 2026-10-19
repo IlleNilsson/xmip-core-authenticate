@@ -7,7 +7,10 @@ verifies the presented credential and resolves it to a Party, or refuses.
 The Party is the output, never the input. Anonymous is an authenticated
 outcome, not a skipped gate. Authentication happens once, where the credential
 arrives; whether the Party may do what it is about to do is authorization's
-question, asked every time.
+question, asked every time. A Receive Location that names its Parties
+(`Acceptance::from_party`) refuses a verified identity resolving to another
+Party, `PartyNotPermitted`, or to none, `NoParty`: its closed set is of
+identities as well as mechanisms (ADR-0019 clause 1, amendment 2026-10-19).
 
 ADR-0019 governs identity in both directions and ADR-0050 makes each
 technology under this repository one mechanism at this gate; identity per
@@ -61,8 +64,12 @@ names none.
 What `certificate` and `mutual-tls` both need lives here (ADR-0044) and off
 by default: the `x509` feature turns on `authenticate::x509` — a chain read
 from PEM, walked to a held anchor by webpki over ring, its validity and its
-CRLs checked offline (ADR-0045), and a `Name` that compares distinguished
-names by their attributes in any order. The sixteen technologies that never
+CRLs checked offline (ADR-0045), and whether a certificate names a claim —
+by its subject, a DNS name or a user principal name (`x509::name`). The
+distinguished name itself, `Name`, compared by its attributes in any order,
+and a leaf's fingerprint are `xmip-core-library-tls`'s, read once where a
+transport that terminates TLS reads them, and `x509` re-exports `Name`
+(ADR-0033, amendment 2026-10-19). The sixteen technologies that never
 see a certificate carry none of it. The `mint` feature, for tests only,
 issues roots, intermediates, leaves and CRLs with fresh keys so that every
 verifier tests against a chain minted the same way; it ships in no build.
