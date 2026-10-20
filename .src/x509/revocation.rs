@@ -93,7 +93,7 @@ mod tests {
     const DAY: i64 = 86_400;
 
     #[test]
-    fn a_revoked_certificate_is_refused_and_its_neighbour_is_not() {
+    fn a_revoked_certificate_is_refused_and_its_neighbor_is_not() {
         let root = Authority::root("Party Root");
         let revoked = root.issue("party-x.example", NOW - DAY, NOW + DAY);
         let fine = root.issue("party-y.example", NOW - DAY, NOW + DAY);

@@ -274,7 +274,7 @@ mod tests {
     const DAY: i64 = 86_400;
 
     #[test]
-    fn a_chain_to_a_held_anchor_verifies_and_the_fingerprint_is_the_leafs() {
+    fn a_chain_to_a_held_anchor_verifies_and_the_fingerprint_is_of_the_leaf() {
         let root = Authority::root("Party Root");
         let issuing = root.intermediate("Party Issuing CA");
         let issued = issuing.issue("party-x.example", NOW - DAY, NOW + DAY);

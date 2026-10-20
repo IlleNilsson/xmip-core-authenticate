@@ -33,7 +33,7 @@ pub const DEFAULT_ITERATIONS: u32 = 600_000;
 /// The width of every key and hash here: SHA-256's.
 pub const KEY_LENGTH: usize = 32;
 
-/// The width of an enrolment's salt, drawn from the operating system's
+/// The width of an enrollment's salt, drawn from the operating system's
 /// random source: 128 bits, as RFC 8018 section 4.1 asks at least 64.
 pub const SALT_LENGTH: usize = 16;
 
@@ -207,20 +207,20 @@ impl CredentialStore {
         store
     }
 
-    /// The iteration count new enrolments derive with.
+    /// The iteration count new enrollments derive with.
     #[must_use]
     pub const fn iterations(&self) -> u32 {
         self.iterations
     }
 
-    /// Enrol a password under a fresh salt. A second enrolment of the same
+    /// Enroll a password under a fresh salt. A second enrollment of the same
     /// name replaces the first.
     pub fn insert(&mut self, username: &str, password: &str) {
         let salt = random::array::<SALT_LENGTH>();
         self.insert_verifier(username, Verifier::derive(password, &salt, self.iterations));
     }
 
-    /// Enrol a verifier derived elsewhere.
+    /// Enroll a verifier derived elsewhere.
     pub fn insert_verifier(&mut self, username: &str, verifier: Verifier) {
         self.verifiers.insert(username.to_string(), verifier);
     }
@@ -347,7 +347,7 @@ mod tests {
     }
 
     #[test]
-    fn two_enrolments_of_one_password_take_two_salts() {
+    fn two_enrollments_of_one_password_take_two_salts() {
         let mut store = CredentialStore::with_iterations(ITERATIONS);
         store.insert("alice", "pencil");
         store.insert("carol", "pencil");
