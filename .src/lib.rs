@@ -122,7 +122,7 @@ pub enum Refusal {
     /// The Receive Location declares no mechanism at all.
     LocationAcceptsNothing,
     /// Presented by a mechanism this location does not declare. Not attempted
-    /// against the others — that is the rule, not an optimisation.
+    /// against the others — that is the rule, not an optimization.
     MechanismNotDeclared { presented: String },
     /// Declared, and nothing loaded can verify it.
     NoAuthenticator { mechanism: String },
