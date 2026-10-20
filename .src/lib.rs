@@ -25,6 +25,7 @@
 //! credential and *resolves it to* a Party, per ADR-0019 clause 4.
 
 pub mod account;
+pub mod circumstance;
 pub mod clock;
 pub mod conclusion;
 pub mod secret;
@@ -40,6 +41,7 @@ pub mod x509;
 #[cfg(feature = "jose")]
 pub mod jose;
 
+pub use circumstance::Circumstance;
 pub use conclusion::Conclusion;
 
 use context::{AuthenticatedIdentity, Verified};

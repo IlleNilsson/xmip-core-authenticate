@@ -17,6 +17,20 @@ technology under this repository one mechanism at this gate; identity per
 technology, against the standards, is `doc/identity-by-technology.md` beside
 this file. `architecture.toml` names the technologies.
 
+## A drop folder's circumstance
+
+`authenticate::Circumstance` verifies the `circumstance` mechanism, a drop
+folder's implied identity (ADR-0019 clause 7; `terminology.md`, *Implied
+identity*). Where nothing identified anything — a dropped file, a raw socket
+— the runtime infers the place the Stream came from as the transport
+identity; every node infers one, so every build of `xmip-service` carries
+this verifier, and a Receive Location takes it only where its
+`accept.mechanism` names `circumstance` (the owner, 2026-10-19). It refuses
+a circumstance a sender passed or that was detected — nothing a sender
+writes can be its own drop folder — and one naming no place, and answers
+*claimed*: who may write in the folder is the operating system's
+permissions (ADR-0019 and ADR-0050, amendments 2026-10-20).
+
 ## The clock
 
 `authenticate::clock` is the one time every verifier reads and the one window
