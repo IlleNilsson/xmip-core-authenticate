@@ -111,7 +111,7 @@ and borrowing SASL and OAuth rather than inventing a scheme.
 
 All three are request signing rather than session authentication. The identity
 is proven per request, which means there is no connection identity to inherit —
-a distinction that matters when a Journey spans several calls.
+a distinction that matters when a Message's travel spans several calls.
 
 ### Database
 
@@ -172,7 +172,7 @@ Identity inside the payload, after Message creation.
 The EDI rows are the important ones. **X12's ISA and EDIFACT's UNB carry
 identity but no cryptography** — they are claims, not proof, and treating them
 as authentication is the classic B2B mistake. They name the counterparty so a
-Journey can be routed and billed; proving it is the transport's job, or AS2's.
+Message can be routed and billed; proving it is the transport's job, or AS2's.
 
 For contracts, `fhir` is the one that carries identity semantics of its own:
 Provenance and Signature resources, and SMART on FHIR scopes layered on OAuth
