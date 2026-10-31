@@ -8,7 +8,8 @@
 //! infers a circumstance, so every node carries the verifier, and a Receive
 //! Location takes it only where its `accept.mechanism` names
 //! `circumstance` (clause 1, the closed set; ADR-0068: chosen by
-//! configuration). The owner, 2026-10-19: a drop folder's implied identity
+//! configuration) and its `accept.transport` takes `claimed` (amendment
+//! 2026-10-31). The owner, 2026-10-19: a drop folder's implied identity
 //! is linked into the service and chosen by configuration, so a file
 //! Receive Location can accept on a real node.
 //!
