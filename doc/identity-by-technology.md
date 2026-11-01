@@ -101,6 +101,23 @@ MQTT 5's enhanced authentication and Kafka's `OAUTHBEARER` are both the same
 move: a messaging protocol admitting that a username and password is not enough
 and borrowing SASL and OAuth rather than inventing a scheme.
 
+**The broker's word for the sender** (ADR-0019, amendment 2026-10-31). A
+broker delivers a message with a field naming who sent it — AMQP's
+`user-id`, which RabbitMQ refuses unless it is the user the publishing
+connection authenticated as; IBM MQ's `UserIdentifier`; SQS's `SenderId`,
+which the service writes itself. The transport writes that field, the
+broker's host under `broker`, and `broker.verified` only where its own
+connection proved the broker. The `broker` identifier and authenticator,
+both in every build, answer **vouched** where the transport says it proved
+the broker and names it, and **claimed** otherwise:
+
+| Transport | Field | What Xmip's connection proves | Verdict |
+| --- | --- | --- | --- |
+| `aws-sqs` over `https://`, signed | `SenderId` | the service's certificate for its host, and the Location's secret accepted | vouched |
+| `aws-sqs` over `http://` | `SenderId` | nothing | claimed |
+| `rabbitmq`, `amqp` | `user-id` | nothing: no TLS yet | claimed |
+| `ibm-mq` | `UserIdentifier` | nothing: no TLS yet, and an application with context authority sets the field | claimed |
+
 ### Cloud
 
 | Technology | Channel | Credential | Standard |
