@@ -17,6 +17,7 @@
 
 pub mod name;
 pub mod revocation;
+pub mod validity;
 
 #[cfg(feature = "x509-alt")]
 pub mod alt;
@@ -30,6 +31,7 @@ pub use revocation::Revocation;
 /// A distinguished name, as the transport wrote the subject and issuer it
 /// reported: what the gates compare a claim and an issuer with.
 pub use tls::Name;
+pub use validity::not_after_of;
 
 use crate::AuthenticateError;
 use rustls_pki_types::{CertificateDer, UnixTime};
