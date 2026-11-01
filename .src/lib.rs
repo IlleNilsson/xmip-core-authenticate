@@ -29,6 +29,8 @@ pub mod broker;
 pub mod circumstance;
 pub mod clock;
 pub mod conclusion;
+pub mod handshake;
+pub mod peer_credentials;
 pub mod secret;
 pub mod store;
 
@@ -45,6 +47,8 @@ pub mod jose;
 pub use broker::Broker;
 pub use circumstance::Circumstance;
 pub use conclusion::Conclusion;
+pub use handshake::Handshake;
+pub use peer_credentials::PeerCredentials;
 
 use context::{AuthenticatedIdentity, Verified};
 use identify::Presented;

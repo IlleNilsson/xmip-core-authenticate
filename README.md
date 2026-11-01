@@ -31,6 +31,22 @@ writes can be its own drop folder — and one naming no place, and answers
 *claimed*: who may write in the folder is the operating system's
 permissions (ADR-0019 and ADR-0050, amendments 2026-10-20).
 
+## The operate plane's caller
+
+Every node's operate listener proves every caller it serves, so the two
+verifiers it asks stand here beside the circumstance, and the runtime runs
+its caller's claim through `authenticate::authenticate` like any arrival's
+(ADR-0009, amendment 2026-11-01). `authenticate::Handshake` is the one rule
+for a `mutual-tls` handshake: proven where the `mutual-tls.handshake` proof
+the transport that terminated it wrote says `verified` and the subject is
+not empty, refused otherwise; the `mutual-tls` technology asks it before it
+narrows by issuer. `authenticate::PeerCredentials` verifies
+`peer-credentials`, the account the operating system names for a local
+endpoint's peer: proven for a claim *detected*, read from the connection,
+naming an account, with the node's `peer-credentials.system` proof saying
+`verified`; refused where it was passed or inferred, names no account, or
+the word is missing or another.
+
 ## The clock
 
 `authenticate::clock` is the one time every verifier reads and the one window
