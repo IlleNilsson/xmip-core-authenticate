@@ -63,6 +63,25 @@ impl Chain {
         Ok(Self { certificates })
     }
 
+    /// The chain a handshake handed over as DER, leaf first: what a
+    /// connection's peer presented, read without a round trip through PEM.
+    /// Refuses an empty chain.
+    ///
+    /// # Errors
+    ///
+    /// No certificate at all.
+    pub fn from_der(certificates: &[&[u8]]) -> Result<Self, AuthenticateError> {
+        if certificates.is_empty() {
+            return Err(AuthenticateError::new("the chain holds no certificate"));
+        }
+        Ok(Self {
+            certificates: certificates
+                .iter()
+                .map(|der| CertificateDer::from(der.to_vec()))
+                .collect(),
+        })
+    }
+
     /// The certificate the peer is: the first one.
     #[must_use]
     pub fn leaf(&self) -> &CertificateDer<'static> {
@@ -292,6 +311,16 @@ mod tests {
         );
         assert!(chain.fingerprint().starts_with("SHA256:"));
         assert_eq!(chain.fingerprint().len(), 7 + 64);
+
+        // The same chain handed over as DER verifies alike; none is refused.
+        let der: Vec<&[u8]> = [chain.leaf()]
+            .into_iter()
+            .chain(chain.intermediates())
+            .map(AsRef::as_ref)
+            .collect();
+        let handed = Chain::from_der(&der).expect("a chain");
+        assert!(verify(&handed, &anchors, Usage::ClientAuth, None, NOW).is_ok());
+        assert!(Chain::from_der(&[]).is_err());
     }
 
     #[test]
