@@ -40,13 +40,13 @@ hmac = "0.13"
 webpki = { package = "rustls-webpki", version = "0.103", features = ["ring"], optional = true }
 rustls-pki-types = { version = "1", optional = true }
 rustls-pemfile = { version = "2", optional = true }
-x509-parser = { version = "0.16", optional = true }
+x509-parser = { version = "0.18", optional = true }
 # A distinguished name and a leaf's fingerprint, read once in the estate
 # where a transport that terminates TLS reads them (`tls::Name`,
 # `tls::peer::fingerprint`), so the name the gates compare is the name the
 # transport wrote.
 tls = { package = "xmip-core-library-tls", git = "https://github.com/IlleNilsson/xmip-core-library-tls", branch = "main", optional = true }
-rcgen = { version = "0.13", optional = true }
+rcgen = { version = "0.14", optional = true }
 time = { version = "0.3", optional = true }
 # The alternative, post-quantum signature a hybrid certificate carries
 # (ITU-T X.509 (10/2019) clause 9.8) is ML-DSA, which ring does not have and
@@ -57,7 +57,7 @@ aws-lc-rs = { version = "1", optional = true, features = ["prebuilt-nasm"] }
 # technology asks for it: RS256 through rsa, ES256 through p256, HS256
 # through the hmac and sha2 above; serde_json reads a JWKS document.
 rsa = { version = "0.9", optional = true, features = ["sha2"] }
-p256 = { version = "0.13", optional = true, features = ["ecdsa", "pem"] }
+p256 = { version = "0.14", optional = true, features = ["ecdsa", "pem"] }
 serde_json = { version = "1", optional = true }
 
 [features]
@@ -70,8 +70,9 @@ jose = ["dep:rsa", "dep:p256", "dep:serde_json"]
 # The crate tests its own x509 module: a dev-dependency on itself is how
 # Cargo turns a feature on for the tests and for nothing else.
 xmip-core-authenticate = { path = ".", features = ["mint", "x509-alt", "jose"] }
-# The jose tests publish keys as an issuer would: rand for a key to sign with.
-rand = "0.8"
+# The jose tests publish keys as an issuer would: p256 drawing a key to sign
+# with from the operating system's random source.
+p256 = { version = "0.14", features = ["getrandom"] }
 
 [profile.dev.package."*"]
 opt-level = 3

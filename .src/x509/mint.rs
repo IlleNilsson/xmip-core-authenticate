@@ -8,7 +8,7 @@
 
 use rcgen::{
     BasicConstraints, Certificate, CertificateParams, CertificateRevocationListParams, DnType,
-    ExtendedKeyUsagePurpose, IsCa, KeyIdMethod, KeyPair, KeyUsagePurpose, OtherNameValue,
+    ExtendedKeyUsagePurpose, IsCa, Issuer, KeyIdMethod, KeyPair, KeyUsagePurpose, OtherNameValue,
     RevokedCertParams, SanType, SerialNumber,
 };
 use time::OffsetDateTime;
@@ -19,7 +19,9 @@ use aws_lc_rs::signature::{ML_DSA_65_SIGNING, PqdsaKeyPair};
 /// An authority that issues: a root, or an intermediate beneath one.
 pub struct Authority {
     certificate: Certificate,
-    key: KeyPair,
+    /// The name, key identifier and usages a certificate this authority
+    /// signs names it by, and the key it signs with.
+    issuer: Issuer<'static, KeyPair>,
     /// Whether this is a root: self-signed, held as an anchor, and never
     /// part of what a peer sends.
     root: bool,
@@ -49,13 +51,12 @@ impl Authority {
     #[must_use]
     pub fn root(name: &str) -> Self {
         let key = KeyPair::generate().expect("a key pair");
-        let certificate = authority_params(name)
-            .self_signed(&key)
-            .expect("a self-signed root");
+        let params = authority_params(name);
+        let certificate = params.self_signed(&key).expect("a self-signed root");
 
         Self {
             certificate,
-            key,
+            issuer: Issuer::new(params, key),
             root: true,
             above: Vec::new(),
             #[cfg(feature = "x509-alt")]
@@ -71,8 +72,9 @@ impl Authority {
     #[must_use]
     pub fn intermediate(&self, name: &str) -> Self {
         let key = KeyPair::generate().expect("a key pair");
-        let certificate = authority_params(name)
-            .signed_by(&key, &self.certificate, &self.key)
+        let params = authority_params(name);
+        let certificate = params
+            .signed_by(&key, &self.issuer)
             .expect("a signed intermediate");
         // A root above is not part of what a peer sends; an intermediate is.
         let mut above = Vec::new();
@@ -84,7 +86,7 @@ impl Authority {
 
         Self {
             certificate,
-            key,
+            issuer: Issuer::new(params, key),
             root: false,
             above,
             #[cfg(feature = "x509-alt")]
@@ -180,7 +182,7 @@ impl Authority {
         };
 
         params
-            .signed_by(&self.certificate, &self.key)
+            .signed_by(&self.issuer)
             .expect("a signed list")
             .pem()
             .expect("PEM")
@@ -206,9 +208,7 @@ impl Authority {
         alt_signer: Option<&Self>,
     ) -> Certificate {
         let classical = |params: CertificateParams, key: &KeyPair| {
-            params
-                .signed_by(key, &self.certificate, &self.key)
-                .expect("a signed leaf")
+            params.signed_by(key, &self.issuer).expect("a signed leaf")
         };
 
         match alt_signer {
@@ -249,13 +249,14 @@ impl Authority {
     pub fn hybrid_root(name: &str) -> Self {
         let key = KeyPair::generate().expect("a key pair");
         let alt = PqdsaKeyPair::generate(&ML_DSA_65_SIGNING).expect("an ML-DSA key");
-        let certificate = hybrid::sign(authority_params(name), &key, &alt, &alt, &|params, key| {
+        let params = authority_params(name);
+        let certificate = hybrid::sign(params.clone(), &key, &alt, &alt, &|params, key| {
             params.self_signed(key).expect("a self-signed root")
         });
 
         Self {
             certificate,
-            key,
+            issuer: Issuer::new(params, key),
             root: true,
             above: Vec::new(),
             alt: Some(alt),
@@ -272,17 +273,12 @@ impl Authority {
         let key = KeyPair::generate().expect("a key pair");
         let alt = PqdsaKeyPair::generate(&ML_DSA_65_SIGNING).expect("an ML-DSA key");
         let signer = self.alt.as_ref().expect("a hybrid authority");
-        let certificate = hybrid::sign(
-            authority_params(name),
-            &key,
-            &alt,
-            signer,
-            &|params, key| {
-                params
-                    .signed_by(key, &self.certificate, &self.key)
-                    .expect("a signed intermediate")
-            },
-        );
+        let params = authority_params(name);
+        let certificate = hybrid::sign(params.clone(), &key, &alt, signer, &|params, key| {
+            params
+                .signed_by(key, &self.issuer)
+                .expect("a signed intermediate")
+        });
         let mut above = Vec::new();
 
         if !self.root {
@@ -292,7 +288,7 @@ impl Authority {
 
         Self {
             certificate,
-            key,
+            issuer: Issuer::new(params, key),
             root: false,
             above,
             alt: Some(alt),
