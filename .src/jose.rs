@@ -15,6 +15,8 @@
 
 use crate::AuthenticateError;
 use hmac::{Hmac, KeyInit, Mac};
+use p256::ecdsa::signature::Verifier as _;
+use p256::pkcs8::DecodePublicKey as _;
 use rsa::pkcs8::DecodePublicKey;
 use rsa::signature::Verifier as _;
 use serde_json::Value;
@@ -143,13 +145,16 @@ impl Key {
     /// Where the coordinates are not thirty-two bytes each or not a point on
     /// the curve.
     pub fn p256_point(id: Option<&str>, x: &[u8], y: &[u8]) -> Result<Self, AuthenticateError> {
-        if x.len() != 32 || y.len() != 32 {
+        let (Ok(x), Ok(y)) = (
+            <&p256::FieldBytes>::try_from(x),
+            <&p256::FieldBytes>::try_from(y),
+        ) else {
             return Err(AuthenticateError::new(
                 "a P-256 coordinate is thirty-two bytes",
             ));
-        }
-        let point = p256::EncodedPoint::from_affine_coordinates(x.into(), y.into(), false);
-        let key = p256::ecdsa::VerifyingKey::from_encoded_point(&point)
+        };
+        let point = p256::Sec1Point::from_affine_coordinates(x, y, false);
+        let key = p256::ecdsa::VerifyingKey::from_sec1_point(&point)
             .map_err(|_| AuthenticateError::new("the P-256 coordinates are not on the curve"))?;
         Ok(Self::of(id, Material::P256(key)))
     }
@@ -347,14 +352,15 @@ fn member(entry: &Value, name: &str) -> Result<Vec<u8>, AuthenticateError> {
 mod tests {
     use super::*;
     use p256::ecdsa::signature::Signer;
+    use p256::elliptic_curve::Generate as _;
 
     fn signing_key() -> p256::ecdsa::SigningKey {
-        p256::ecdsa::SigningKey::random(&mut rand::rngs::OsRng)
+        p256::ecdsa::SigningKey::generate()
     }
 
     /// A P-256 key as a JWK, as an issuer would publish it.
     fn p256_jwk(id: &str, key: &p256::ecdsa::SigningKey) -> String {
-        let point = key.verifying_key().to_encoded_point(false);
+        let point = key.verifying_key().to_sec1_point(false);
         format!(
             r#"{{"kty":"EC","crv":"P-256","use":"sig","kid":"{id}","x":"{}","y":"{}"}}"#,
             codec::base64::encode_url_unpadded(point.x().expect("x")),
