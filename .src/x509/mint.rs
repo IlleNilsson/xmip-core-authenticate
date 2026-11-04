@@ -71,8 +71,24 @@ impl Authority {
     /// Key generation or signing fails.
     #[must_use]
     pub fn intermediate(&self, name: &str) -> Self {
+        self.intermediate_with(authority_params(name))
+    }
+
+    /// An intermediate this authority signs, valid until `not_after`, in
+    /// seconds since the Unix epoch.
+    ///
+    /// # Panics
+    ///
+    /// Key generation or signing fails.
+    #[must_use]
+    pub fn intermediate_ending(&self, name: &str, not_after: i64) -> Self {
+        let mut params = authority_params(name);
+        params.not_after = instant(not_after);
+        self.intermediate_with(params)
+    }
+
+    fn intermediate_with(&self, params: CertificateParams) -> Self {
         let key = KeyPair::generate().expect("a key pair");
-        let params = authority_params(name);
         let certificate = params
             .signed_by(&key, &self.issuer)
             .expect("a signed intermediate");
