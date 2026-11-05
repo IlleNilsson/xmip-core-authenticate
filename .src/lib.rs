@@ -236,7 +236,7 @@ pub trait Authenticator: Send + Sync {
 /// permission.
 ///
 /// Answers with a [`PartyId`] and not a `Party`, which is why this gate has no
-/// dependency on `xmip-core-party` — `architecture.toml` gives it `xmip-core`
+/// dependency on `xmip-core-party` — `architecture.xmip` gives it `xmip-core`
 /// and `xmip-core-context` and nothing else. The restriction is the design
 /// rather than an accident of packaging: proving a credential and knowing whose
 /// it is are different questions, and a gate that could read a Party's
