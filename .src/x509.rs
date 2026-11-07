@@ -34,6 +34,7 @@ pub use tls::Name;
 pub use validity::not_after_of;
 
 use crate::AuthenticateError;
+use rustls_pki_types::pem::PemObject;
 use rustls_pki_types::{CertificateDer, UnixTime};
 use std::time::Duration;
 use webpki::{EndEntityCert, ExtendedKeyUsageValidator, KeyPurposeIdIter, KeyUsage};
@@ -52,7 +53,7 @@ impl Chain {
     ///
     /// The text holds no certificate, or a block in it is not one.
     pub fn from_pem(pem: &str) -> Result<Self, AuthenticateError> {
-        let certificates = read_pem(pem, |rd| rustls_pemfile::certs(rd).collect())?;
+        let certificates = read_pem::<CertificateDer<'static>>(pem)?;
 
         if certificates.is_empty() {
             return Err(AuthenticateError::new(
@@ -116,7 +117,7 @@ impl Anchors {
     /// A block is not a certificate.
     pub fn from_pem(pem: &str) -> Result<Self, AuthenticateError> {
         Ok(Self {
-            certificates: read_pem(pem, |rd| rustls_pemfile::certs(rd).collect())?,
+            certificates: read_pem::<CertificateDer<'static>>(pem)?,
         })
     }
 
@@ -274,15 +275,12 @@ fn said(failure: &webpki::Error) -> String {
     }
 }
 
-/// Every block of one kind in a PEM text, read with one of rustls-pemfile's
-/// readers, and the error said in words where a block is not what it claims.
-fn read_pem<T>(
-    pem: &str,
-    reader: impl FnOnce(&mut dyn std::io::BufRead) -> Result<Vec<T>, std::io::Error>,
-) -> Result<Vec<T>, AuthenticateError> {
-    let mut cursor = std::io::BufReader::new(pem.as_bytes());
-
-    reader(&mut cursor)
+/// Every block of one kind in a PEM text — `T`'s, by rustls-pki-types'
+/// `PemObject` — and the error said in words where a block is not what it
+/// claims. None where the text holds none of that kind.
+fn read_pem<T: PemObject>(pem: &str) -> Result<Vec<T>, AuthenticateError> {
+    T::pem_slice_iter(pem.as_bytes())
+        .collect::<Result<Vec<_>, _>>()
         .map_err(|failure| AuthenticateError::new(format!("the PEM does not read: {failure}")))
 }
 

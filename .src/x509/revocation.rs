@@ -28,7 +28,7 @@ impl Revocation {
     ///
     /// A block is not a CRL, or none is there.
     pub fn from_pem(pem: &str) -> Result<Self, AuthenticateError> {
-        let lists = super::read_pem(pem, |rd| rustls_pemfile::crls(rd).collect())?;
+        let lists = super::read_pem::<CertificateRevocationListDer<'static>>(pem)?;
 
         if lists.is_empty() {
             return Err(AuthenticateError::new(
