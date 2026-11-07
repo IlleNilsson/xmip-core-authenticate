@@ -242,13 +242,9 @@ impl Authority {
     /// issues.
     #[allow(clippy::unnecessary_wraps, clippy::unused_self)]
     fn alt_signer(&self) -> Option<&Self> {
-        #[cfg(feature = "x509-alt")]
-        {
-            self.alt.as_ref().map(|_| self)
-        }
-        #[cfg(not(feature = "x509-alt"))]
-        {
-            None
+        cfg_select! {
+            feature = "x509-alt" => self.alt.as_ref().map(|_| self),
+            _ => None,
         }
     }
 }
