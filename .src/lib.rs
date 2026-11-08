@@ -27,10 +27,12 @@
 pub mod account;
 pub mod broker;
 pub mod circumstance;
+pub mod claims;
 pub mod clock;
 pub mod conclusion;
 pub mod handshake;
 pub mod peer_credentials;
+pub mod replay;
 pub mod secret;
 pub mod store;
 
@@ -280,13 +282,16 @@ pub fn authenticate(
             mechanism: presented.mechanism.name().to_string(),
         })?;
 
-    let Conclusion { verified, learned } =
-        authenticator
-            .conclude(presented)
-            .map_err(|failure| Refusal::NotProven {
-                mechanism: presented.mechanism.name().to_string(),
-                detail: failure.message,
-            })?;
+    let Conclusion {
+        verified,
+        learned,
+        proven,
+    } = authenticator
+        .conclude(presented)
+        .map_err(|failure| Refusal::NotProven {
+            mechanism: presented.mechanism.name().to_string(),
+            detail: failure.message,
+        })?;
 
     if verified == Verified::Refused {
         return Err(Refusal::NotProven {
@@ -295,9 +300,13 @@ pub fn authenticate(
         });
     }
 
+    // Who the proof proved, where the mechanism says: a ticket's client,
+    // never the service the claim could name. That is the identity, and
+    // the Party is resolved by it.
+    let value = proven.as_deref().unwrap_or(&presented.value);
     let mut identity = AuthenticatedIdentity::new(
         presented.mechanism.clone(),
-        &presented.value,
+        value,
         presented.established,
         verified,
     );
@@ -316,11 +325,7 @@ pub fn authenticate(
 
     // The lookup happens after verification, never before. Resolving first
     // would leak which values are known to an unauthenticated caller.
-    match registry.resolve(
-        presented.mechanism.name(),
-        Purpose::Receive,
-        &presented.value,
-    ) {
+    match registry.resolve(presented.mechanism.name(), Purpose::Receive, value) {
         Some(party_id) if !acceptance.permits(party_id) => {
             return Err(Refusal::PartyNotPermitted { party_id });
         }
@@ -387,8 +392,41 @@ mod tests {
         }
 
         fn conclude(&self, _presented: &Presented) -> Result<Conclusion, AuthenticateError> {
-            Ok(Conclusion::proven().learning("principal.user", "jane@corp.example"))
+            Ok(Conclusion::proven()
+                .learning("principal.user", "jane@corp.example")
+                .proving("jane@CORP.EXAMPLE"))
         }
+    }
+
+    #[test]
+    fn the_party_is_resolved_by_who_the_proof_proved_and_not_by_the_service_claimed() {
+        // A ticket's claim can name only the service; a Party registered
+        // for the service must not be what every client of it resolves to.
+        let registry = Registry(vec![
+            (
+                PartyId::new(7),
+                "kerberos",
+                Purpose::Receive,
+                "HTTP/xmip.example",
+            ),
+            (
+                PartyId::new(8),
+                "kerberos",
+                Purpose::Receive,
+                "jane@CORP.EXAMPLE",
+            ),
+        ]);
+
+        let identity = authenticate(
+            &Acceptance::closed().accepting(&mechanism::kerberos()),
+            &[&Learns],
+            &registry,
+            &Presented::passed(mechanism::kerberos(), "HTTP/xmip.example"),
+        )
+        .expect("accepted");
+
+        assert_eq!(identity.value, "jane@CORP.EXAMPLE");
+        assert_eq!(identity.party_id, Some(PartyId::new(8)));
     }
 
     #[test]

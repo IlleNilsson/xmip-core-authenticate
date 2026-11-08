@@ -11,8 +11,8 @@
 use crate::AuthenticateError;
 use rustls_pki_types::CertificateRevocationListDer;
 use webpki::{
-    CertRevocationList, OwnedCertRevocationList, RevocationCheckDepth, RevocationOptions,
-    RevocationOptionsBuilder, UnknownStatusPolicy,
+    CertRevocationList, ExpirationPolicy, OwnedCertRevocationList, RevocationCheckDepth,
+    RevocationOptions, RevocationOptionsBuilder, UnknownStatusPolicy,
 };
 
 /// The CRLs a node holds, as their DER.
@@ -67,8 +67,10 @@ impl Revocation {
             .collect()
     }
 
-    /// The policy over the parsed lists: the whole chain is checked, and a
-    /// certificate no list covers is refused.
+    /// The policy over the parsed lists: the whole chain is checked, a
+    /// certificate no list covers is refused, and so is one whose list is
+    /// past its `nextUpdate`: a list the issuer has stopped vouching for
+    /// cannot say a certificate was not revoked since.
     pub(super) fn options<'a>(
         lists: &'a [&'a CertRevocationList<'a>],
     ) -> Result<RevocationOptions<'a>, AuthenticateError> {
@@ -77,6 +79,7 @@ impl Revocation {
                 builder
                     .with_depth(RevocationCheckDepth::Chain)
                     .with_status_policy(UnknownStatusPolicy::Deny)
+                    .with_expiration_policy(ExpirationPolicy::Enforce)
                     .build()
             })
             .map_err(|_| AuthenticateError::new("revocation was asked for and no list is held"))
@@ -137,6 +140,29 @@ mod tests {
         )
         .expect_err("unknown status");
         assert!(failure.message.contains("no revocation list"), "{failure}");
+    }
+
+    #[test]
+    fn a_list_past_its_next_update_is_refused_and_not_read_as_clean() {
+        // Dated three days ago and good for one: the issuer no longer vouches
+        // for it, so it cannot say the certificate was not revoked since.
+        let root = Authority::root("Party Root");
+        let issued = root.issue("party-x.example", NOW - DAY, NOW + DAY);
+        let lists = Revocation::from_pem(&root.crl(&[], NOW - 3 * DAY)).expect("a list");
+        let anchors = Anchors::from_pem(&root.pem()).expect("anchors");
+
+        let failure = verify(
+            &Chain::from_pem(&issued.pem).expect("a chain"),
+            &anchors,
+            Usage::ClientAuth,
+            Some(&lists),
+            NOW,
+        )
+        .expect_err("an expired list");
+        assert!(
+            failure.message.contains("revocation list has expired"),
+            "{failure}"
+        );
     }
 
     #[test]
