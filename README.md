@@ -56,6 +56,25 @@ their own `now()` and their own reading of the bound until 2026-09-24. The
 time is the estate's one clock, `xcore::SystemClock`, read in the seconds a
 credential's window counts.
 
+## Issuer, audience, expiry, and what was presented before
+
+`authenticate::claims` is the one set of checks a signed credential is held
+to: `Expected` takes the issuer and the audience a verifier needs, both
+required; `current` refuses a credential with no expiry or outside its
+window, `within` holds a window that is optional by its standard. `jwt`,
+`oidc`, `oauth2` and `saml` call them. `authenticate::replay` is the one
+cache of what was presented once: a key is kept until it would expire anyway,
+and a cache full of keys that still matter refuses the next rather than
+forget one. `saml` spends an assertion's `ID` there and `kerberos` an
+authenticator.
+
+## Who the proof proved
+
+A `Conclusion` may say who the proof proved where the claim could not: a
+Kerberos ticket's claim names the service, and its client is sealed. The gate
+records that as the identity's value and resolves the Party by it, never by
+the value claimed.
+
 ## The gate dispatches, the verifier verifies
 
 The gate hands a claim to the authenticator whose mechanism has the claim's
@@ -94,7 +113,8 @@ names none.
 What `certificate` and `mutual-tls` both need lives here (ADR-0044) and off
 by default: the `x509` feature turns on `authenticate::x509` — a chain read
 from PEM, walked to a held anchor by webpki over ring, its validity and its
-CRLs checked offline (ADR-0045), and whether a certificate names a claim —
+CRLs checked offline (ADR-0045), a CRL past its `nextUpdate` refused as
+expired rather than read as clean, and whether a certificate names a claim —
 by its subject, a DNS name or a user principal name (`x509::name`). The
 distinguished name itself, `Name`, compared by its attributes in any order,
 and a leaf's fingerprint are `xmip-core-library-tls`'s, read once where a

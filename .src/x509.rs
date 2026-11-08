@@ -268,6 +268,11 @@ fn said(failure: &webpki::Error) -> String {
         webpki::Error::UnknownRevocationStatus => {
             "no revocation list the node holds covers the certificate".to_string()
         }
+        webpki::Error::CrlExpired { .. } => {
+            "the revocation list has expired: it is past its next update, and the node needs \
+             the issuer's current one"
+                .to_string()
+        }
         webpki::Error::RequiredEkuNotFoundContext(_) => {
             "the certificate is not for client authentication".to_string()
         }

@@ -21,6 +21,11 @@ pub struct Conclusion {
     /// Evidence the verifying gave and the claim could not: a ticket's
     /// client, a token's scopes. Named as the first gate names evidence.
     pub learned: Vec<(String, String)>,
+    /// Who the proof proved, where that is not the value claimed: the
+    /// client a Kerberos ticket seals, where the claim could name only the
+    /// service. The gate records this as the identity's value and resolves
+    /// the Party by it; `None` is the claimed value itself.
+    pub proven: Option<String>,
 }
 
 impl Conclusion {
@@ -30,7 +35,16 @@ impl Conclusion {
         Self {
             verified,
             learned: Vec::new(),
+            proven: None,
         }
+    }
+
+    /// And the proof proved `value`, which the gate takes in place of the
+    /// value claimed.
+    #[must_use]
+    pub fn proving(mut self, value: impl Into<String>) -> Self {
+        self.proven = Some(value.into());
+        self
     }
 
     /// Proven, nothing learned yet.
