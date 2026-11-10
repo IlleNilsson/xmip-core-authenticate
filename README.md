@@ -15,7 +15,7 @@ identities as well as mechanisms (ADR-0019 clause 1, amendment 2026-10-19).
 ADR-0019 governs identity in both directions and ADR-0050 makes each
 technology under this repository one mechanism at this gate; identity per
 technology, against the standards, is `doc/identity-by-technology.md` beside
-this file. `architecture.xmip` names the technologies.
+this file. `architecture.toml` names the technologies.
 
 ## A drop folder's circumstance
 
