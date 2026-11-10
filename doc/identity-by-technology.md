@@ -12,7 +12,7 @@ Both may be present, either may be absent, and neither substitutes for the
 other. This catalog exists so that a Receive Location's security
 configuration is a lookup rather than an argument.
 
-Every technology named here appears in `architecture.xmip`. Where a row says
+Every technology named here appears in `architecture.toml`. Where a row says
 *none*, that is a property of the standard and cannot be configured away — the
 identity has to come from the other layer or from the circumstance.
 
@@ -219,7 +219,7 @@ proves is integrity of the content.
 ## 4. What the sort added to the estate
 
 Sorting the catalog against the standards found AS2 and AS4 absent; both are
-declared in `architecture.xmip` now, and the manifest carries what each
+declared in `architecture.toml` now, and the manifest carries what each
 depends on.
 
 **AS2** (RFC 4130; `draft-ietf-ediint-rfc4130bis` is the text to track) is
@@ -258,7 +258,7 @@ Identity is one thing a transport specification governs. The specification a
 Module implements against is another, and it belongs beside it:
 
 The specification each module implements against is the `specification` field
-of its entry in `architecture.xmip` (`doc/architecture/repository-model.md`,
+of its entry in `architecture.toml` (`doc/architecture/repository-model.md`,
 section 5b); this document does not repeat the table.
 
 Representation and Path collaborators stay separate repositories:
