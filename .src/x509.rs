@@ -8,6 +8,10 @@
 //! every certificate on it is inside its validity window now, and none is on
 //! a revocation list the node holds. Revocation is by CRL and offline
 //! (ADR-0045); asking an OCSP responder is online and waits for the switch.
+//! A chain proves who it names, not who sent it: where no handshake bound it
+//! to the connection, the sender proves it holds the leaf's key by signing
+//! this arrival — signed attributes carrying the digest of its content
+//! ([`possessed`]).
 //!
 //! webpki walks the path and checks the signatures; it keeps names as DER.
 //! A name, and a leaf's fingerprint, are read as the transport that reported
@@ -16,6 +20,7 @@
 //! x509-parser.
 
 pub mod name;
+pub mod possession;
 pub mod revocation;
 pub mod validity;
 
@@ -27,6 +32,7 @@ pub mod der;
 #[cfg(feature = "mint")]
 pub mod mint;
 
+pub use possession::possessed;
 pub use revocation::Revocation;
 /// A distinguished name, as the transport wrote the subject and issuer it
 /// reported: what the gates compare a claim and an issuer with.

@@ -12,6 +12,13 @@ question, asked every time. A Receive Location that names its Parties
 Party, `PartyNotPermitted`, or to none, `NoParty`: its closed set is of
 identities as well as mechanisms (ADR-0019 clause 1, amendment 2026-10-19).
 
+Only a proven or vouched identity resolves to a Party. A claim nothing
+proved — an ISA06, a drop folder's circumstance — is a name anyone can
+write, so it is authenticated as claimed and resolves to none, and a
+Receive Location that names its Parties refuses it with `NoParty` rather
+than letting it in as a default identity (the owner, 2026-11-10; ADR-0019,
+amendment 2026-11-11).
+
 ADR-0019 governs identity in both directions and ADR-0050 makes each
 technology under this repository one mechanism at this gate; identity per
 technology, against the standards, is `doc/identity-by-technology.md` beside
@@ -115,7 +122,18 @@ by default: the `x509` feature turns on `authenticate::x509` — a chain read
 from PEM, walked to a held anchor by webpki over ring, its validity and its
 CRLs checked offline (ADR-0045), a CRL past its `nextUpdate` refused as
 expired rather than read as clean, and whether a certificate names a claim —
-by its subject, a DNS name or a user principal name (`x509::name`). The
+by its subject, a DNS name or a user principal name (`x509::name`) — and
+whether the sender holds the leaf's key and signed this arrival with it,
+`x509::possessed`: the `certificate.signature` over the
+`certificate.signed` attributes — a CMS SignerInfo's signed attributes,
+read by the estate's X.690 reader — whose one `messageDigest` must be the
+`certificate.digest` the transport measured of this arrival's content, so
+a signature the holder made over an earlier arrival is refused, and the
+proofs carry attributes and a digest, never the content; a chain alone is
+anyone's to forward (ADR-0019, amendment 2026-11-11). The leaf's classical
+key is the one checked, hybrid or not. The `mint` leaf signs with its own
+key for a test (`Issued::sign`, `Issued::possessing`, `signed_attributes`,
+`content_digest`). The
 distinguished name itself, `Name`, compared by its attributes in any order,
 and a leaf's fingerprint are `xmip-core-library-tls`'s, read once where a
 transport that terminates TLS reads them, and `x509` re-exports `Name`

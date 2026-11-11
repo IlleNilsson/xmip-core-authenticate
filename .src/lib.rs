@@ -22,7 +22,9 @@
 //! **The Party is the output, never the input.** An earlier signature here took
 //! a `&Party` and a credential, which required knowing who the caller was
 //! before checking who the caller was. Authentication verifies the presented
-//! credential and *resolves it to* a Party, per ADR-0019 clause 4.
+//! credential and *resolves it to* a Party, per ADR-0019 clause 4 — only
+//! where it was proven or vouched for: a claim nothing proved names nobody
+//! (ADR-0019, amendment 2026-11-11).
 
 pub mod account;
 pub mod broker;
@@ -324,8 +326,15 @@ pub fn authenticate(
     }
 
     // The lookup happens after verification, never before. Resolving first
-    // would leak which values are known to an unauthenticated caller.
-    match registry.resolve(presented.mechanism.name(), Purpose::Receive, value) {
+    // would leak which values are known to an unauthenticated caller. And
+    // only what the sender proved, or a party Xmip proved vouches for, names
+    // a Party: a claim nothing proved is a name anyone can write, so it
+    // resolves to none (ADR-0019, amendment 2026-11-11).
+    let resolved = verified
+        .names_a_party()
+        .then(|| registry.resolve(presented.mechanism.name(), Purpose::Receive, value))
+        .flatten();
+    match resolved {
         Some(party_id) if !acceptance.permits(party_id) => {
             return Err(Refusal::PartyNotPermitted { party_id });
         }
@@ -624,6 +633,41 @@ mod tests {
         .expect("accepted");
 
         assert_eq!(identity.verified, Verified::Claimed);
+    }
+
+    #[test]
+    fn a_claim_nothing_proved_resolves_to_no_party_and_a_vouched_one_does() {
+        // The owner, 2026-11-10: a Party only from what the sender proved.
+        // The same registered value, claimed, names nobody; a location that
+        // takes named Parties only refuses it rather than letting it in.
+        let isa06 = || Presented::detected(mechanism::edi_x12_interchange(), "ISA06=PARTYX");
+        let registry = Registry(vec![(
+            PartyId::new(5),
+            "edi-x12-interchange",
+            Purpose::Receive,
+            "ISA06=PARTYX",
+        )]);
+        let accepting = || Acceptance::closed().accepting(&mechanism::edi_x12_interchange());
+        let gate = |verdict, acceptance: &Acceptance| {
+            authenticate(
+                acceptance,
+                &[&Always(mechanism::edi_x12_interchange(), verdict)],
+                &registry,
+                &isa06(),
+            )
+        };
+
+        let claimed = gate(Verified::Claimed, &accepting()).expect("authenticated");
+        assert_eq!(claimed.party_id, None);
+        let named = accepting().from_party(PartyId::new(5));
+        assert!(matches!(
+            gate(Verified::Claimed, &named),
+            Err(Refusal::NoParty { .. })
+        ));
+        for verdict in [Verified::Vouched, Verified::Proven] {
+            let resolved = gate(verdict, &named).expect("authenticated");
+            assert_eq!(resolved.party_id, Some(PartyId::new(5)), "{verdict:?}");
+        }
     }
 
     #[test]

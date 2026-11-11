@@ -33,14 +33,20 @@ pub struct Authority {
     alt: Option<PqdsaKeyPair>,
 }
 
-/// A certificate an authority issued.
+/// A certificate an authority issued, and the key it was issued for.
 pub struct Issued {
     /// The chain as a transport reports it: the leaf, then the
     /// intermediates, never the root.
     pub pem: String,
     /// The serial, for a CRL to name.
     pub serial: SerialNumber,
+    /// The leaf's own key, which only its holder signs with
+    /// (`possessing.rs`).
+    key: KeyPair,
 }
+
+mod possessing;
+pub use possessing::{content_digest, signed_attributes};
 
 impl Authority {
     /// A self-signed root named `name`, `O=Party X`.
@@ -121,16 +127,8 @@ impl Authority {
     pub fn issue(&self, common_name: &str, not_before: i64, not_after: i64) -> Issued {
         let key = KeyPair::generate().expect("a key pair");
         let params = leaf_params(common_name, not_before, not_after);
-        let serial = params.serial_number.clone().expect("a serial");
-        let certificate = self.sign_leaf(params, &key, self.alt_signer());
-        let mut pem = certificate.pem();
-        pem.push_str(&self.certificate_pem_if_intermediate());
-
-        for parent in &self.above {
-            pem.push_str(parent);
-        }
-
-        Issued { pem, serial }
+        let certificate = self.sign_leaf(params.clone(), &key, self.alt_signer());
+        self.issued(&certificate, &params, key)
     }
 
     /// A leaf as [`Authority::issue`] makes it, carrying a user principal
@@ -154,16 +152,26 @@ impl Authority {
             vec![1, 3, 6, 1, 4, 1, 311, 20, 2, 3],
             OtherNameValue::Utf8String(principal.to_string()),
         )));
-        let serial = params.serial_number.clone().expect("a serial");
-        let certificate = self.sign_leaf(params, &key, self.alt_signer());
+        let certificate = self.sign_leaf(params.clone(), &key, self.alt_signer());
+        self.issued(&certificate, &params, key)
+    }
+
+    /// The leaf `certificate`, issued with `params` for `key`, as a
+    /// transport reports its chain: the leaf, this authority where it is an
+    /// intermediate, then the intermediates above.
+    fn issued(
+        &self,
+        certificate: &Certificate,
+        params: &CertificateParams,
+        key: KeyPair,
+    ) -> Issued {
         let mut pem = certificate.pem();
         pem.push_str(&self.certificate_pem_if_intermediate());
-
         for parent in &self.above {
             pem.push_str(parent);
         }
-
-        Issued { pem, serial }
+        let serial = params.serial_number.clone().expect("a serial");
+        Issued { pem, serial, key }
     }
 
     /// This authority's certificate as PEM: what a node holds as an anchor.
@@ -323,16 +331,8 @@ impl Authority {
     ) -> Issued {
         let key = KeyPair::generate().expect("a key pair");
         let params = leaf_params(common_name, not_before, not_after);
-        let serial = params.serial_number.clone().expect("a serial");
-        let certificate = self.sign_leaf(params, &key, Some(alt_signer));
-        let mut pem = certificate.pem();
-        pem.push_str(&self.certificate_pem_if_intermediate());
-
-        for parent in &self.above {
-            pem.push_str(parent);
-        }
-
-        Issued { pem, serial }
+        let certificate = self.sign_leaf(params.clone(), &key, Some(alt_signer));
+        self.issued(&certificate, &params, key)
     }
 }
 
