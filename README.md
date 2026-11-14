@@ -100,7 +100,11 @@ share — `password`, `basic`, `digest` and `scram` — holding a SCRAM-SHA-256
 verifier and never the password. `authenticate::secret` is the hashed secret
 store with expiry `api-key` and `bearer` verify against: a secret the node
 minted with full entropy, kept as its SHA-256 under the name it was issued
-to. Until 2026-09-24 `api-key` and `bearer` each carried the second.
+to. Until 2026-09-24 `api-key` and `bearer` each carried the second. Their
+SHA-256, HMAC and PBKDF2 are the estate's one (`codec::digest`), which
+`scram`, `digest`, `jwt`, `kerberos` and `ntlm` call too; until 2026-11-13
+the store wrote them over `sha2` and `hmac` and exported them
+(ADR-0044, amendment 2026-11-13).
 
 ## The claim is identify's
 
@@ -119,7 +123,10 @@ names none.
 
 What `certificate` and `mutual-tls` both need lives here (ADR-0044) and off
 by default: the `x509` feature turns on `authenticate::x509` — a chain read
-from PEM, walked to a held anchor by webpki over ring, its validity and its
+from PEM (`codec::pem`), its names, validity and alternative signature's
+extensions read by the estate's one certificate reader
+(`tls::certificate`, ADR-0033, amendment 2026-11-13), walked to a held
+anchor by webpki over ring, its validity and its
 CRLs checked offline (ADR-0045), a CRL past its `nextUpdate` refused as
 expired rather than read as clean, and whether a certificate names a claim —
 by its subject, a DNS name or a user principal name (`x509::name`) — and

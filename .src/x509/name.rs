@@ -12,8 +12,7 @@ use crate::AuthenticateError;
 use identify::UserPrincipalName;
 use rustls_pki_types::CertificateDer;
 use tls::Name;
-use x509_parser::extensions::GeneralName;
-use x509_parser::prelude::{FromDer, X509Certificate};
+use tls::certificate::Certificate;
 
 /// The subject of a certificate.
 ///
@@ -30,20 +29,15 @@ pub fn subject_of(certificate: &CertificateDer<'_>) -> Result<Name, Authenticate
 ///
 /// The bytes are not an X.509 certificate, or the extension is malformed.
 pub fn dns_names_of(certificate: &CertificateDer<'_>) -> Result<Vec<String>, AuthenticateError> {
-    let (_, parsed) = X509Certificate::from_der(certificate.as_ref())
-        .map_err(|failure| AuthenticateError::new(format!("not X.509: {failure}")))?;
-    let alternative = parsed.subject_alternative_name().map_err(|failure| {
+    read(certificate)?.names().map_err(|failure| {
         AuthenticateError::new(format!("the alternative names do not read: {failure}"))
-    })?;
+    })
+}
 
-    Ok(alternative
-        .into_iter()
-        .flat_map(|extension| extension.value.general_names.iter())
-        .filter_map(|name| match name {
-            GeneralName::DNSName(dns) => Some((*dns).to_string()),
-            _ => None,
-        })
-        .collect())
+/// The certificate `certificate` is, by the estate's one reader.
+fn read(certificate: &CertificateDer<'_>) -> Result<Certificate, AuthenticateError> {
+    Certificate::read(certificate.as_ref())
+        .map_err(|failure| AuthenticateError::new(format!("not X.509: {failure}")))
 }
 
 /// The user principal name a certificate carries, where it carries one:
@@ -57,20 +51,15 @@ pub fn dns_names_of(certificate: &CertificateDer<'_>) -> Result<Vec<String>, Aut
 pub fn user_principal_of(
     certificate: &CertificateDer<'_>,
 ) -> Result<Option<UserPrincipalName>, AuthenticateError> {
-    let (_, parsed) = X509Certificate::from_der(certificate.as_ref())
-        .map_err(|failure| AuthenticateError::new(format!("not X.509: {failure}")))?;
-    let alternative = parsed.subject_alternative_name().map_err(|failure| {
+    let other = read(certificate)?.other_names().map_err(|failure| {
         AuthenticateError::new(format!("the alternative names do not read: {failure}"))
     })?;
 
-    Ok(alternative
+    Ok(other
         .into_iter()
-        .flat_map(|extension| extension.value.general_names.iter())
-        .find_map(|name| match name {
-            GeneralName::OtherName(kind, value) if kind.to_id_string() == UPN => {
-                utf8_within(value).and_then(|text| UserPrincipalName::parse(&text))
-            }
-            _ => None,
+        .filter(|(kind, _)| kind == UPN)
+        .find_map(|(_, value)| {
+            utf8_within(&value).and_then(|text| UserPrincipalName::parse(&text))
         }))
 }
 
@@ -97,8 +86,9 @@ pub fn names(certificate: &CertificateDer<'_>, claim: &str) -> Result<bool, Auth
         .any(|dns| dns.eq_ignore_ascii_case(claim.trim())))
 }
 
-/// Microsoft's object identifier for a user principal name in an otherName.
-const UPN: &str = "1.3.6.1.4.1.311.20.2.3";
+/// Microsoft's object identifier for a user principal name in an otherName,
+/// 1.3.6.1.4.1.311.20.2.3.
+const UPN: &[u32] = &[1, 3, 6, 1, 4, 1, 311, 20, 2, 3];
 
 /// The text of an otherName value: `[0] EXPLICIT UTF8String`, two headers
 /// and a string read by the estate's X.690 reader (`xmip-core-library-asn1`),

@@ -5,7 +5,6 @@
 use asn1::{OBJECT_IDENTIFIER, OCTET_STRING, SEQUENCE, tlv};
 use identify::Presented;
 use identify::evidence::{CERTIFICATE_DIGEST, CERTIFICATE_SIGNATURE, CERTIFICATE_SIGNED};
-use sha2::{Digest, Sha256};
 
 use super::Issued;
 use crate::x509::possession::MESSAGE_DIGEST;
@@ -21,7 +20,7 @@ const DATA: &[u8] = &[0x2A, 0x86, 0x48, 0x86, 0xF7, 0x0D, 0x01, 0x07, 0x01];
 /// The digest a transport measures of `content`: SHA-256.
 #[must_use]
 pub fn content_digest(content: &[u8]) -> Vec<u8> {
-    Sha256::digest(content).to_vec()
+    codec::digest::sha256(content).to_vec()
 }
 
 /// The signed attributes a signer of `content` signs, as they are signed: a

@@ -7,7 +7,7 @@
 
 use super::Path;
 use crate::AuthenticateError;
-use x509_parser::prelude::{FromDer, X509Certificate};
+use tls::certificate::Certificate;
 
 /// The end of `certificate`'s validity window, `notAfter`, in seconds since
 /// the Unix epoch.
@@ -16,9 +16,9 @@ use x509_parser::prelude::{FromDer, X509Certificate};
 ///
 /// The bytes are not an X.509 certificate.
 pub fn not_after_of(certificate: &[u8]) -> Result<i64, AuthenticateError> {
-    let (_, parsed) = X509Certificate::from_der(certificate)
-        .map_err(|failure| AuthenticateError::new(format!("not X.509: {failure}")))?;
-    Ok(parsed.validity().not_after.timestamp())
+    Certificate::read(certificate)
+        .map(|read| read.not_after)
+        .map_err(|failure| AuthenticateError::new(format!("not X.509: {failure}")))
 }
 
 impl Path {
