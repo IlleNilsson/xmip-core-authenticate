@@ -16,7 +16,8 @@
 use codec::constant_time;
 
 use crate::clock::Window;
-use crate::store::{KEY_LENGTH, sha256};
+use crate::store::KEY_LENGTH;
+use codec::digest::sha256;
 
 /// One secret as the store holds it.
 #[derive(Clone, Debug, Eq, PartialEq)]

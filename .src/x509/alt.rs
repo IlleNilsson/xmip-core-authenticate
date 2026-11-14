@@ -22,8 +22,12 @@ use super::{Chain, Path};
 use crate::AuthenticateError;
 use aws_lc_rs::signature::{self, UnparsedPublicKey, VerificationAlgorithm};
 use rustls_pki_types::{CertificateDer, alg_id};
-use x509_parser::der_parser::oid;
-use x509_parser::prelude::{FromDer, X509Certificate};
+use tls::certificate::Certificate;
+
+/// `subjectAltPublicKeyInfo`, `altSignatureAlgorithm`, `altSignatureValue`.
+const SUBJECT_ALT_PUBLIC_KEY_INFO: &[u32] = &[2, 5, 29, 72];
+const ALT_SIGNATURE_ALGORITHM: &[u32] = &[2, 5, 29, 73];
+const ALT_SIGNATURE_VALUE: &[u32] = &[2, 5, 29, 74];
 
 /// What a node requires of the alternative signatures on a path.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -153,27 +157,27 @@ pub fn verify_alt(path: &Path, hybrid: Hybrid) -> Result<(), AuthenticateError> 
 
 /// The three extensions off one certificate, read and not yet believed.
 fn carried(certificate: &CertificateDer<'_>) -> Result<Alternative, AuthenticateError> {
-    let (_, parsed) = X509Certificate::from_der(certificate.as_ref())
+    let parsed = Certificate::read(certificate.as_ref())
         .map_err(|failure| AuthenticateError::new(format!("not X.509: {failure}")))?;
     let extension = |name: &str, id| {
-        parsed.get_extension_unique(&id).map_err(|_| {
+        parsed.unique_extension(id).map_err(|_| {
             AuthenticateError::new(format!("{name} appears more than once in the certificate"))
         })
     };
-    let public_key = extension("subjectAltPublicKeyInfo", oid!(2.5.29.72))?
-        .map(|extension| extension.value.to_vec());
-    let algorithm = extension("altSignatureAlgorithm", oid!(2.5.29.73))?;
-    let value = extension("altSignatureValue", oid!(2.5.29.74))?;
+    let public_key =
+        extension("subjectAltPublicKeyInfo", SUBJECT_ALT_PUBLIC_KEY_INFO)?.map(<[u8]>::to_vec);
+    let algorithm = extension("altSignatureAlgorithm", ALT_SIGNATURE_ALGORITHM)?;
+    let value = extension("altSignatureValue", ALT_SIGNATURE_VALUE)?;
 
     let signature = match (algorithm, value) {
         (None, None) => None,
         (Some(algorithm), Some(value)) => {
-            let set = MlDsa::named(algorithm.value).ok_or_else(|| {
+            let set = MlDsa::named(algorithm).ok_or_else(|| {
                 AuthenticateError::new(
                     "the alternative signature's algorithm is not an ML-DSA this build verifies",
                 )
             })?;
-            let (0x03, bits, _) = asn1::read(value.value)? else {
+            let (asn1::BIT_STRING, bits, _) = asn1::read(value)? else {
                 return Err(AuthenticateError::new("altSignatureValue is a BIT STRING"));
             };
             let (&unused, bytes) = bits.split_first().ok_or_else(|| {

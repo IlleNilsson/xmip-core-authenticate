@@ -28,7 +28,7 @@ impl Revocation {
     ///
     /// A block is not a CRL, or none is there.
     pub fn from_pem(pem: &str) -> Result<Self, AuthenticateError> {
-        let lists = super::read_pem::<CertificateRevocationListDer<'static>>(pem)?;
+        let lists: Vec<CertificateRevocationListDer<'static>> = super::read_pem("X509 CRL", pem)?;
 
         if lists.is_empty() {
             return Err(AuthenticateError::new(

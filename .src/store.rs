@@ -17,13 +17,13 @@
 //! beside the verifier for the realms a user was enrolled in — as `htdigest`
 //! files do — and computes the SHA-256 one itself.
 //!
-//! Every hash and derivation here is public because the `scram` verifier
-//! needs the same primitives to compute a client signature, and a test needs
-//! them to play the client.
+//! The hashes are the estate's one SHA-256, HMAC and PBKDF2
+//! (`codec::digest`), which the `scram` verifier computes a client
+//! signature with too; until 2026-11-13 they were written here, public for
+//! it. [`salted_password`] is public because a test plays the client.
 
+use codec::digest::{hmac_sha256, pbkdf2_hmac_sha256, sha256};
 use codec::{constant_time, hex, random};
-use hmac::{Hmac, KeyInit, Mac};
-use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 
 /// The iteration count a store derives with unless configured otherwise.
@@ -42,35 +42,13 @@ pub const SALT_LENGTH: usize = 16;
 pub const MD5: &str = "MD5";
 pub const SHA_256: &str = "SHA-256";
 
-/// SHA-256 of `data`.
+/// RFC 5802's `SaltedPassword`: PBKDF2-HMAC-SHA256 of `password`, one
+/// 32-byte block (`codec::digest`). Zero iterations are taken as one.
 #[must_use]
-pub fn sha256(data: &[u8]) -> [u8; KEY_LENGTH] {
-    Sha256::digest(data).into()
-}
-
-/// HMAC-SHA256 of `data` under `key`.
-#[must_use]
-pub fn hmac_sha256(key: &[u8], data: &[u8]) -> [u8; KEY_LENGTH] {
-    let mut mac = Hmac::<Sha256>::new_from_slice(key).expect("HMAC takes a key of any length");
-    mac.update(data);
-    mac.finalize().into_bytes().into()
-}
-
-/// PBKDF2-HMAC-SHA256 (RFC 8018 section 5.2), one block, which is all a
-/// 32-byte key needs. Zero iterations are taken as one.
-#[must_use]
-pub fn pbkdf2_sha256(password: &[u8], salt: &[u8], iterations: u32) -> [u8; KEY_LENGTH] {
-    let mut salted = salt.to_vec();
-    salted.extend_from_slice(&1u32.to_be_bytes());
-    let mut block = hmac_sha256(password, &salted);
-    let mut derived = block;
-    for _ in 1..iterations.max(1) {
-        block = hmac_sha256(password, &block);
-        for (out, next) in derived.iter_mut().zip(block.iter()) {
-            *out ^= next;
-        }
-    }
-    derived
+pub fn salted_password(password: &[u8], salt: &[u8], iterations: u32) -> [u8; KEY_LENGTH] {
+    let mut salted = [0; KEY_LENGTH];
+    pbkdf2_hmac_sha256(password, salt, iterations, &mut salted);
+    salted
 }
 
 /// What the store holds for one username: RFC 5802 section 3's four values.
@@ -90,7 +68,7 @@ impl Verifier {
     /// Derive from a password. The password is not kept.
     #[must_use]
     pub fn derive(password: &str, salt: &[u8], iterations: u32) -> Self {
-        let salted = pbkdf2_sha256(password.as_bytes(), salt, iterations);
+        let salted = salted_password(password.as_bytes(), salt, iterations);
         let client_key = hmac_sha256(&salted, b"Client Key");
         Self {
             salt: salt.to_vec(),
@@ -140,7 +118,7 @@ impl Verifier {
     /// once the derivation is done.
     #[must_use]
     pub fn matches(&self, password: &str) -> bool {
-        let salted = pbkdf2_sha256(password.as_bytes(), &self.salt, self.iterations);
+        let salted = salted_password(password.as_bytes(), &self.salt, self.iterations);
         let client_key = hmac_sha256(&salted, b"Client Key");
         constant_time::equal(&sha256(&client_key), &self.stored_key)
     }
@@ -301,13 +279,13 @@ mod tests {
     #[test]
     fn the_derivation_is_pbkdf2_hmac_sha256_by_the_published_vector() {
         // The widely reproduced vector for ("password", "salt", 4096).
-        let derived = pbkdf2_sha256(b"password", b"salt", 4096);
+        let derived = salted_password(b"password", b"salt", 4096);
         assert_eq!(
             hex::encode(&derived),
             "c5e478d59288c841aa530db6845c4c8d962893a001ce4e11a4963873aa98134a"
         );
         assert_eq!(
-            hex::encode(&pbkdf2_sha256(b"password", b"salt", 1)),
+            hex::encode(&salted_password(b"password", b"salt", 1)),
             "120fb6cffcf8b32c43e7225256c4f837a86548c92ccc35480805987cb70be17b"
         );
     }
@@ -335,7 +313,7 @@ mod tests {
         let verifier = store.verifier("alice").expect("enrolled");
         let printed = format!("{verifier:?}");
         assert!(!printed.contains("pencil"));
-        let salted = pbkdf2_sha256(b"pencil", verifier.salt(), ITERATIONS);
+        let salted = salted_password(b"pencil", verifier.salt(), ITERATIONS);
         assert_ne!(verifier.stored_key(), &salted);
         assert_ne!(verifier.server_key(), &salted);
         // What is kept is what RFC 5802 says: H(ClientKey) and ServerKey.
@@ -375,7 +353,7 @@ mod tests {
     #[test]
     fn a_client_key_proves_the_stored_key_it_hashes_to() {
         let verifier = Verifier::derive("pencil", b"salt", ITERATIONS);
-        let salted = pbkdf2_sha256(b"pencil", b"salt", ITERATIONS);
+        let salted = salted_password(b"pencil", b"salt", ITERATIONS);
         assert!(verifier.proves(&hmac_sha256(&salted, b"Client Key")));
         assert!(!verifier.proves(&hmac_sha256(&salted, b"Server Key")));
     }

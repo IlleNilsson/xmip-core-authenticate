@@ -14,13 +14,12 @@
 //! publishes it. Off unless a technology turns the `jose` feature on.
 
 use crate::AuthenticateError;
-use hmac::{Hmac, KeyInit, Mac};
+use codec::digest::HmacSha256;
 use p256::ecdsa::signature::Verifier as _;
 use p256::pkcs8::DecodePublicKey as _;
 use rsa::pkcs8::DecodePublicKey;
 use rsa::signature::Verifier as _;
 use serde_json::Value;
-use sha2::Sha256;
 use std::fmt;
 
 /// One of the three signature algorithms verified here.
@@ -186,10 +185,9 @@ impl Key {
     fn holds(&self, input: &[u8], signature: &[u8]) -> bool {
         match &self.material {
             Material::Secret(secret) => {
-                Hmac::<Sha256>::new_from_slice(secret).is_ok_and(|mut mac| {
-                    mac.update(input);
-                    mac.verify_slice(signature).is_ok()
-                })
+                let mut mac = HmacSha256::new(secret);
+                mac.update(input);
+                mac.verify(signature)
             }
             Material::Rsa(key) => {
                 let key = rsa::pkcs1v15::VerifyingKey::<rsa::sha2::Sha256>::new(key.clone());
@@ -442,9 +440,7 @@ mod tests {
     #[test]
     fn a_secret_serves_hs256_and_prints_its_id_and_never_its_bytes() {
         let key = Key::secret(Some("k1"), b"hidden");
-        let mut mac = Hmac::<Sha256>::new_from_slice(b"hidden").expect("a key");
-        mac.update(b"input");
-        let signature = mac.finalize().into_bytes();
+        let signature = codec::digest::hmac_sha256(b"hidden", b"input");
         let set = KeySet::new(vec![key.clone()]);
 
         assert_eq!(key.algorithm(), Algorithm::Hs256);

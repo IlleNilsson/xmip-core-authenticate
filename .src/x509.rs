@@ -16,8 +16,10 @@
 //! webpki walks the path and checks the signatures; it keeps names as DER.
 //! A name, and a leaf's fingerprint, are read as the transport that reported
 //! them read them, by `xmip-core-library-tls` ([`Name`],
-//! `tls::peer::fingerprint`); the alternative names [`name`] reads with
-//! x509-parser.
+//! `tls::peer::fingerprint`); the alternative names [`name`] reads, a
+//! validity and the alternative signature's extensions are read by its one
+//! certificate reader (`tls::certificate`), and the PEM by `codec::pem` —
+//! until 2026-11-13 by x509-parser and rustls-pki-types' `PemObject`.
 
 pub mod name;
 pub mod possession;
@@ -40,7 +42,6 @@ pub use tls::Name;
 pub use validity::not_after_of;
 
 use crate::AuthenticateError;
-use rustls_pki_types::pem::PemObject;
 use rustls_pki_types::{CertificateDer, UnixTime};
 use std::time::Duration;
 use webpki::{EndEntityCert, ExtendedKeyUsageValidator, KeyPurposeIdIter, KeyUsage};
@@ -59,7 +60,7 @@ impl Chain {
     ///
     /// The text holds no certificate, or a block in it is not one.
     pub fn from_pem(pem: &str) -> Result<Self, AuthenticateError> {
-        let certificates = read_pem::<CertificateDer<'static>>(pem)?;
+        let certificates = read_pem("CERTIFICATE", pem)?;
 
         if certificates.is_empty() {
             return Err(AuthenticateError::new(
@@ -123,7 +124,7 @@ impl Anchors {
     /// A block is not a certificate.
     pub fn from_pem(pem: &str) -> Result<Self, AuthenticateError> {
         Ok(Self {
-            certificates: read_pem::<CertificateDer<'static>>(pem)?,
+            certificates: read_pem("CERTIFICATE", pem)?,
         })
     }
 
@@ -254,12 +255,10 @@ pub fn verify(
 }
 
 /// A certificate's `subjectPublicKeyInfo`, as its DER.
-fn spki_of<'a>(certificate: &'a CertificateDer<'_>) -> Option<&'a [u8]> {
-    use x509_parser::prelude::{FromDer, X509Certificate};
-
-    X509Certificate::from_der(certificate.as_ref())
+fn spki_of(certificate: &CertificateDer<'_>) -> Option<Vec<u8>> {
+    tls::certificate::Certificate::read(certificate.as_ref())
         .ok()
-        .map(|(_, parsed)| parsed.tbs_certificate.subject_pki.raw)
+        .map(|read| read.public_key_info)
 }
 
 /// The refusal in words, for the reasons an operator meets.
@@ -286,12 +285,12 @@ fn said(failure: &webpki::Error) -> String {
     }
 }
 
-/// Every block of one kind in a PEM text — `T`'s, by rustls-pki-types'
-/// `PemObject` — and the error said in words where a block is not what it
-/// claims. None where the text holds none of that kind.
-fn read_pem<T: PemObject>(pem: &str) -> Result<Vec<T>, AuthenticateError> {
-    T::pem_slice_iter(pem.as_bytes())
-        .collect::<Result<Vec<_>, _>>()
+/// Every block under `label` in a PEM text, by the estate's one PEM reader
+/// (`codec::pem`), and the error said in words where a block is not what
+/// it claims. None where the text holds none of that kind.
+fn read_pem<T: From<Vec<u8>>>(label: &str, pem: &str) -> Result<Vec<T>, AuthenticateError> {
+    codec::pem::decode(label, pem)
+        .map(|blocks| blocks.into_iter().map(T::from).collect())
         .map_err(|failure| AuthenticateError::new(format!("the PEM does not read: {failure}")))
 }
 
