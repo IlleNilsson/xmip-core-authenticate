@@ -111,13 +111,18 @@ the store wrote them over `sha2` and `hmac` and exported them
 A verifier is handed `identify::Presented`, and names it from `identify`:
 this crate re-exports nothing of the first gate's (the owner, 2026-09-24).
 
-## JOSE keys, behind a feature
+## JOSE is the library's
 
-`jwt` and `oidc` verify a JWS with the same keys. The `jose` feature turns on
-`authenticate::jose`: HS256, RS256 and ES256 keys, a key set read from a JSON
-Web Key Set document, and one rule for choosing a key — the one the token
-names, which must serve its algorithm, or every key of the algorithm where it
-names none.
+`jwt` and `oidc` verify a JWS with the same keys, and the keys are
+`xmip-core-library-jose`'s (`jose::jwk`, its `key` feature): HS256, RS256
+and ES256 keys, a key set read from a JSON Web Key Set document, and one
+rule for choosing a key — the one the token names, which must serve its
+algorithm, or every key of the algorithm where it names none. The token they
+read is the library's `jose::jwt::Token`, the first gate's read. This crate
+keeps what a gate makes of a token — the window, the issuer and the audience
+(`claims`, `clock`) — and its error takes the library's failures with
+`From`. Until 2026-11-16 the keys were this crate's, behind a `jose` feature
+(ADR-0050, amendment 2026-11-16).
 
 ## X.509, behind a feature
 

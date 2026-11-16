@@ -43,11 +43,6 @@ pub mod store;
 #[cfg(feature = "x509")]
 pub mod x509;
 
-/// JOSE keys and key sets, for the two technologies that verify a JWS
-/// (ADR-0050). Off unless a technology turns the `jose` feature on.
-#[cfg(feature = "jose")]
-pub mod jose;
-
 pub use broker::Broker;
 pub use circumstance::Circumstance;
 pub use conclusion::Conclusion;
@@ -205,6 +200,14 @@ impl From<ntlm::NtlmError> for AuthenticateError {
 /// X.690 that is not what it says it is, in a credential a technology reads.
 impl From<asn1::Asn1Error> for AuthenticateError {
     fn from(error: asn1::Asn1Error) -> Self {
+        Self::new(error.message)
+    }
+}
+
+/// A JOSE token that does not read, or a signature no key holds, in what a
+/// technology verifies.
+impl From<jose::JoseError> for AuthenticateError {
+    fn from(error: jose::JoseError) -> Self {
         Self::new(error.message)
     }
 }
