@@ -122,7 +122,7 @@ the broker and names it, and **claimed** otherwise:
 
 | Technology | Channel | Credential | Standard |
 | --- | --- | --- | --- |
-| `s3`, `aws-sqs`, `aws-sns`, `aws-kinesis` | TLS | Signature Version 4, IAM role, STS session | AWS SigV4 |
+| `aws-s3`, `aws-sqs`, `aws-sns`, `aws-kinesis` | TLS | Signature Version 4, IAM role, STS session | AWS SigV4 |
 | `azure-blob`, `azure-service-bus`, `azure-event-hubs`, `azure-event-grid` | TLS | Shared Key, SAS token, Entra ID OAuth 2.0 | Azure |
 | `google-cloud-storage`, `google-pub-sub` | TLS | OAuth 2.0 service account, workload identity, HMAC | Google Cloud |
 
