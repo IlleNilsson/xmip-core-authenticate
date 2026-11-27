@@ -1,8 +1,8 @@
 [package]
 name = "xmip-core-authenticate"
-version = "0.1.0"
-edition = "2024"
-license = "AGPL-3.0-or-later"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
 repository = "https://github.com/IlleNilsson/xmip-core-authenticate"
 description = "The Xmip authentication gate: verify a presented credential, resolve it to a Party."
 
@@ -58,3 +58,5 @@ mint = ["x509", "dep:rcgen", "dep:time"]
 # The crate tests its own x509 module: a dev-dependency on itself is how
 # Cargo turns a feature on for the tests and for nothing else.
 xmip-core-authenticate = { path = ".", features = ["mint", "x509-alt"] }
+
+[lints]
