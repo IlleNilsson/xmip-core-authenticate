@@ -11,16 +11,16 @@ description = "The Xmip authentication gate: verify a presented credential, reso
 path = ".src/lib.rs"
 
 [dependencies]
-xcore = { package = "xmip-core", git = "https://github.com/IlleNilsson/xmip-core", branch = "main" }
-identify = { package = "xmip-core-identify", git = "https://github.com/IlleNilsson/xmip-core-identify", branch = "main" }
-context = { package = "xmip-core-context", git = "https://github.com/IlleNilsson/xmip-core-context", branch = "main" }
+xcore = { workspace = true }
+identify = { workspace = true }
+context = { workspace = true }
 # X.690: the one reader the estate has, for X.509 here and for the Kerberos
 # and LDAP technologies, whose failures this crate's error takes with `From`.
-asn1 = { package = "xmip-core-library-asn1", git = "https://github.com/IlleNilsson/xmip-core-library-asn1", branch = "main" }
+asn1 = { workspace = true }
 # Encoding primitives, whose failures this crate's error takes with `From`.
-codec = { package = "xmip-core-library-codec", git = "https://github.com/IlleNilsson/xmip-core-library-codec", branch = "main" }
+codec = { workspace = true }
 # The NTLM message layout, whose failures this crate's error takes with `From`.
-ntlm = { package = "xmip-core-library-ntlm", git = "https://github.com/IlleNilsson/xmip-core-library-ntlm", branch = "main" }
+ntlm = { workspace = true }
 
 # X.509, shared by `certificate` and `mutual-tls` (ADR-0044) and off unless a
 # technology asks for it, so the sixteen that do not never carry a chain
@@ -37,7 +37,7 @@ rustls-pki-types = { version = "1", optional = true }
 # transport wrote; and the estate's one certificate reader
 # (`tls::certificate`), which reads the alternative names, a validity and
 # the alternative signature's extensions webpki keeps as bytes.
-tls = { package = "xmip-core-library-tls", git = "https://github.com/IlleNilsson/xmip-core-library-tls", branch = "main", optional = true }
+tls = { workspace = true, optional = true }
 rcgen = { version = "0.14", optional = true }
 time = { version = "0.3", optional = true }
 # The alternative, post-quantum signature a hybrid certificate carries
@@ -47,7 +47,7 @@ aws-lc-rs = { version = "1", optional = true, features = ["prebuilt-nasm"] }
 # JOSE, whose failures this crate's error takes with `From`. The keys `jwt`
 # and `oidc` verify a JWS with are the library's (`jose::jwk`), which those
 # two turn on; this crate leaves them off.
-jose = { package = "xmip-core-library-jose", git = "https://github.com/IlleNilsson/xmip-core-library-jose", branch = "main" }
+jose = { workspace = true }
 
 [features]
 x509 = ["dep:webpki", "dep:rustls-pki-types", "dep:tls"]
